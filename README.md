@@ -64,6 +64,13 @@ the extension automatically. You don't need to run any build commands by hand fo
 2. In the repo on GitHub, go to **Settings → Pages**, and under **Build and deployment → Source**, choose
    **GitHub Actions**. (You only need to do this once — after that, every push to `main` redeploys automatically.)
 
+   **This step matters a lot — don't skip it.** If Source is left on "Deploy from a branch" instead, GitHub Pages
+   serves your raw repository files as-is, not the compiled site. That breaks things in two ways at once: the
+   popover will spin on "Loading vault…" forever, because `index.html` ends up pointing at `src/main.ts` — real
+   TypeScript, which no browser can execute directly — and every file's URL gets an extra `public/` in the path
+   (e.g. `.../public/icon.svg` instead of `.../icon.svg`), because nothing flattened the `public/` folder into the
+   site root. `npm run build` (which the Actions workflow runs for you) is what fixes both.
+
 3. Go to the **Actions** tab and confirm the "Deploy Grimoire to GitHub Pages" workflow runs successfully. It
    takes about a minute. Once it's green, your extension is live at:
 
@@ -72,6 +79,13 @@ the extension automatically. You don't need to run any build commands by hand fo
    ```
 
    (Settings → Pages will also show you the exact base URL once the first deploy finishes.)
+
+   **Note on the manifest's `icon`/`popover` paths:** they're hardcoded to `/owlbear-grimoire/icon.svg` and
+   `/owlbear-grimoire/index.html` in `public/manifest.json`, rather than the shorter `/icon.svg` you might expect.
+   Owlbear resolves a manifest's absolute paths against your domain root, not against the folder the manifest
+   itself lives in — so on a GitHub Pages *project* site (served from `/owlbear-grimoire/…`, not the domain root),
+   a plain `/icon.svg` silently resolves to the wrong place. If you rename the repo, update those two paths (and
+   the `icon` field) to match the new name.
 
 ## Installing it in Owlbear Rodeo
 
@@ -171,6 +185,11 @@ support alongside Drive.
 - **Extension doesn't show up after adding the manifest URL**: make sure the URL ends in `/manifest.json` and
   loads a valid JSON file in your browser directly. If you just enabled GitHub Pages, give the Actions workflow a
   minute to finish first.
+- **Popover stuck on "Loading vault…" forever, or the manifest URL's files show a `public/` segment in their
+  path**: this means GitHub Pages is serving your raw source repo instead of the built site. Go to
+  **Settings → Pages → Build and deployment → Source** and make sure it's set to **GitHub Actions**, not "Deploy
+  from a branch." See the callout in [Deploying to GitHub Pages](#deploying-to-github-pages) above for why this
+  breaks things.
 - **Icon shows but the popover is blank/broken**: open your browser's dev tools while the popover is open and
   check the console — most often this is a stale build (rerun the deploy) or a browser cache issue (hard refresh).
 - **Markdown shows an error instead of rendering**: double-check the file is shared "Anyone with the link," that
