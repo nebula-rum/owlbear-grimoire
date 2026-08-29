@@ -1,0 +1,15 @@
+{
+  "name": "Grimoire",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "description": "Organize rules references and lore (PDF & Markdown from Google Drive) into folders and reveal them to players when you're ready.",
+  "author": "Fede",
+  "icon": "icon.svg",
+  "action": {
+    "title": "Grimoire",
+    "icon": "icon.svg",
+    "popover": "index.html",
+    "width": 420,
+    "height": 640
+  }
+}

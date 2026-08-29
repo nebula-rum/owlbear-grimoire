@@ -1,0 +1,22 @@
+{
+  "name": "owlbear-grimoire",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A self-hosted Owlbear Rodeo extension for organizing rules references and lore (PDF & Markdown) from Google Drive, and revealing them to players when you're ready.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@owlbear-rodeo/sdk": "^2.0.0",
+    "dompurify": "^3.1.6",
+    "marked": "^13.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "@types/dompurify": "^3.0.5"
+  }
+}
