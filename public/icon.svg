@@ -1,17 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <!-- page block peeking out from behind the cover -->
-  <rect x="6.5" y="5" width="20" height="23" rx="1.5" fill="#efe6d8"/>
-  <path d="M6.5 6.5 h20 M6.5 9 h20 M6.5 26.5 h20" stroke="#cdbfa5" stroke-width="0.8"/>
-
-  <!-- front cover -->
-  <path d="M6 5.5 C6 4.4 6.9 3.5 8 3.5 H24 C25.1 3.5 26 4.4 26 5.5 V26.5 C26 27.6 25.1 28.5 24 28.5 H8 C6.9 28.5 6 27.6 6 26.5 Z"
-        fill="#6a4fb6" stroke="#4a3384" stroke-width="1.1"/>
-  <!-- spine shading -->
-  <path d="M8 3.5 C6.9 3.5 6 4.4 6 5.5 V26.5 C6 27.6 6.9 28.5 8 28.5" fill="none" stroke="#4a3384" stroke-width="1.1" opacity="0.6"/>
-
-  <!-- clasp strap -->
-  <rect x="13.5" y="13.5" width="5" height="7" rx="1" fill="#4a3384"/>
-  <!-- rune star on the cover -->
-  <path d="M16 8.4 L17 11 L19.6 11.2 L17.6 12.9 L18.3 15.5 L16 14 L13.7 15.5 L14.4 12.9 L12.4 11.2 L15 11 Z"
-        fill="#f4c04a" stroke="#c9932a" stroke-width="0.4"/>
+  <path d="M16 7 Q22 7.5 27 9 L27 23 Q22 24.5 16 25 Z" fill="#efe6d8" stroke="#4a3384" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M16 7 Q10 7.5 5 9 L5 23 Q10 24.5 16 25 Z" fill="#efe6d8" stroke="#4a3384" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M16 7 V25" stroke="#4a3384" stroke-width="1.6"/>
 </svg>
