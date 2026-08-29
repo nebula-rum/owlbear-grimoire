@@ -4,10 +4,10 @@
   "manifest_version": 1,
   "description": "Organize rules references and lore (PDF & Markdown from Google Drive) into folders and reveal them to players when you're ready.",
   "author": "nebula-rum",
-  "icon": "/owlbear-grimoire/icon.svg",
+  "icon": "/owlbear-grimoire/public/icon.svg",
   "action": {
     "title": "Grimoire",
-    "icon": "/owlbear-grimoire/icon.svg",
+    "icon": "/owlbear-grimoire/public/icon.svg",
     "popover": "/owlbear-grimoire/index.html",
     "width": 420,
     "height": 640
