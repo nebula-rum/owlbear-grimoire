@@ -10,6 +10,18 @@
     <div id="app">
       <div id="loading" class="loading">Loading vault…</div>
     </div>
+    <script>
+      // Safety net: if the module script below never runs (stale cache,
+      // blocked/404 asset, etc.) this plain script still fires and tells
+      // you instead of leaving a silent spinner forever.
+      setTimeout(function () {
+        var el = document.getElementById("loading");
+        if (el) {
+          el.textContent =
+            "Still loading after 8s — the app may not have started. Try a hard refresh (Ctrl/Cmd+Shift+R), then check the browser console for errors.";
+        }
+      }, 8000);
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

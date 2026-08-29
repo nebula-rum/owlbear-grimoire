@@ -472,21 +472,40 @@ function render() {
 
 // ----------------------------------------------------------------- boot --
 
+function renderFatalError(err: unknown) {
+  const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  app.innerHTML = "";
+  app.append(
+    el("div", { class: "center-message" }, [
+      el("p", {}, ["Grimoire failed to start."]),
+      el("p", { style: "font-family: monospace; font-size: 11px; opacity: 0.8;" } as any, [message]),
+      el("p", {}, ["Check the browser console for more detail, and try a hard refresh."]),
+    ]),
+  );
+  // Also surface it in the console with the full stack, in case the message
+  // above is truncated by the popover's small size.
+  console.error("Grimoire failed to start:", err);
+}
+
 OBR.onReady(async () => {
-  initTheme();
-  role = await OBR.player.getRole();
-  vault = await loadVault();
-  render();
-
-  OBR.player.onChange((player) => {
-    if (player.role !== role) {
-      role = player.role;
-      render();
-    }
-  });
-
-  onVaultChange((next) => {
-    vault = next;
+  try {
+    initTheme();
+    role = await OBR.player.getRole();
+    vault = await loadVault();
     render();
-  });
+
+    OBR.player.onChange((player) => {
+      if (player.role !== role) {
+        role = player.role;
+        render();
+      }
+    });
+
+    onVaultChange((next) => {
+      vault = next;
+      render();
+    });
+  } catch (err) {
+    renderFatalError(err);
+  }
 });

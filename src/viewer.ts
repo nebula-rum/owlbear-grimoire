@@ -113,5 +113,16 @@ async function boot() {
 }
 
 OBR.onReady(() => {
-  void boot();
+  boot().catch((err) => {
+    const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    const app = document.getElementById("app")!;
+    app.innerHTML = "";
+    app.append(
+      el("div", { class: "center-message" }, [
+        el("p", {}, ["Grimoire's viewer failed to start."]),
+        el("p", { style: "font-family: monospace; font-size: 11px; opacity: 0.8;" } as any, [message]),
+      ]),
+    );
+    console.error("Grimoire viewer failed to start:", err);
+  });
 });
