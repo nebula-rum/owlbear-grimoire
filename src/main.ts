@@ -3,7 +3,7 @@ import OBR from "@owlbear-rodeo/sdk";
 import { initTheme } from "./theme";
 import { loadVault, onVaultChange, saveVault, VaultSizeError } from "./store";
 import { childrenOf, isEffectivelyHidden, nextOrder, wouldCreateCycle, descendantIds } from "./tree";
-import { extractDriveFileId } from "./drive";
+import { extractDriveFileId, fetchDriveThumbnail } from "./drive";
 import { newId, VaultData, VaultItem, VaultItemType, EMPTY_VAULT } from "./types";
 
 const TYPE_META: Record<VaultItemType, { icon: string; label: string }> = {
@@ -32,6 +32,28 @@ let deleteArmTimer: ReturnType<typeof setTimeout> | undefined;
 let settingsOpen = false;
 let toast: string | null = null;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Drive's per-file cover thumbnail (usually a render of page 1), keyed by
+// file id. "loading" while the fetch is in flight, null once we've tried
+// and there wasn't one (or it failed) — either way we stop asking again.
+const thumbnailCache = new Map<string, string | null | "loading">();
+
+/** Kicks off a thumbnail fetch the first time a pdf item is rendered, then
+ *  re-renders once it resolves. Returns the cached image URL immediately if
+ *  we already have one, otherwise null (fall back to the plain icon). */
+function getOrFetchThumbnail(fileId: string, apiKey: string | undefined): string | null {
+  if (!apiKey) return null;
+  const cached = thumbnailCache.get(fileId);
+  if (cached === "loading") return null;
+  if (cached !== undefined) return cached;
+
+  thumbnailCache.set(fileId, "loading");
+  fetchDriveThumbnail(fileId, apiKey).then((link) => {
+    thumbnailCache.set(fileId, link);
+    if (link) render();
+  });
+  return null;
+}
 
 function showToast(message: string) {
   toast = message;
@@ -163,11 +185,18 @@ function saveApiKey(key: string) {
 
 // -------------------------------------------------------------- viewing --
 
+// A "decent" size rather than full-screen — big enough to comfortably read
+// a PDF or a page of notes, small enough to still see the scene behind it,
+// in the same spirit as a character-sheet extension's window.
+const VIEWER_WIDTH = 900;
+const VIEWER_HEIGHT = 720;
+
 function openViewer(item: VaultItem) {
   OBR.modal.open({
     id: "dev.fede.grimoire/viewer",
     url: resolveUrl(`viewer.html?id=${encodeURIComponent(item.id)}`),
-    fullScreen: true,
+    width: VIEWER_WIDTH,
+    height: VIEWER_HEIGHT,
   });
 }
 
@@ -285,7 +314,15 @@ function renderNode(item: VaultItem, depth: number): HTMLElement {
     row.append(el("span", { class: "node-toggle" }, [""]));
   }
 
-  row.append(el("span", { class: "node-icon" }, [TYPE_META[item.type].icon]));
+  const thumbnail =
+    item.type === "pdf" && item.driveFileId
+      ? getOrFetchThumbnail(item.driveFileId, vault.config.driveApiKey)
+      : null;
+  if (thumbnail) {
+    row.append(el("img", { class: "node-thumb", src: thumbnail, alt: "" }));
+  } else {
+    row.append(el("span", { class: "node-icon" }, [TYPE_META[item.type].icon]));
+  }
 
   if (renamingId === item.id) {
     const input = el("input", { class: "node-name-input", value: item.name }) as HTMLInputElement;
