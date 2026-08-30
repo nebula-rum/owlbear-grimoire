@@ -85,6 +85,8 @@ select {
   justify-content: center;
   font-size: 15px;
   line-height: 1;
+  color: inherit;
+  text-decoration: none;
 }
 
 .icon-btn:hover {
@@ -201,6 +203,16 @@ select {
   font-size: 14px;
   width: 18px;
   text-align: center;
+}
+
+.node-thumb {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: var(--ob-bg-paper);
 }
 
 .node-name {
@@ -379,6 +391,16 @@ button.node-name:hover {
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
+}
+
+.viewer-header-thumb {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--ob-bg-paper);
 }
 
 .viewer-header h1 {
