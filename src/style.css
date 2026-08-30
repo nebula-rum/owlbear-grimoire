@@ -484,6 +484,125 @@ button.node-name:hover {
   padding: 6px 8px;
 }
 
+/* ---------- pdf reader ---------- */
+
+.pdf-reader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-height: 0;
+}
+
+.pdf-rail-scroll {
+  flex: 0 0 auto;
+  width: 128px;
+  overflow-y: auto;
+  background: var(--ob-bg-paper);
+  border-right: 1px solid var(--border);
+}
+
+.pdf-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.pdf-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 6px;
+  color: var(--ob-text-secondary);
+}
+
+.pdf-thumb:hover {
+  background: var(--hover);
+}
+
+.pdf-thumb.active {
+  border-color: var(--ob-primary);
+  color: var(--ob-text);
+}
+
+.pdf-thumb-canvas {
+  max-width: 100%;
+  height: auto;
+  min-height: 40px;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.pdf-thumb-label {
+  font-size: 11px;
+}
+
+.pdf-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--ob-bg-paper);
+  flex: 0 0 auto;
+}
+
+.pdf-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pdf-page-input {
+  width: 42px;
+  text-align: center;
+  background: var(--ob-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 2px;
+}
+
+.pdf-page-count {
+  color: var(--ob-text-secondary);
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.pdf-fit-btn {
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.pdf-page-area {
+  flex: 1 1 auto;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #14141a;
+}
+
+.pdf-page-canvas {
+  background: white;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  max-width: none;
+}
+
 .center-message {
   display: flex;
   flex-direction: column;

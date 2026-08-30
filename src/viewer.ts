@@ -5,6 +5,7 @@ import { initTheme } from "./theme";
 import { loadVault } from "./store";
 import { driveFilePreviewUrl, driveFileViewUrl, fetchDriveThumbnail } from "./drive";
 import { fetchRenderedMarkdown, MarkdownFetchError } from "./markdown";
+import { renderPdfReader } from "./pdfReader";
 import { VaultItem } from "./types";
 
 const MODAL_ID = "dev.fede.grimoire/viewer";
@@ -42,6 +43,18 @@ function externalUrlFor(item: VaultItem): string | null {
 
 async function renderContent(item: VaultItem, apiKey: string | undefined): Promise<Node> {
   if (item.type === "pdf" && item.driveFileId) {
+    // The full reader (page nav, zoom, thumbnail rail) needs the file's raw
+    // bytes, which requires the same Drive API key Markdown rendering uses.
+    // With a key, try it first and fall back to Drive's bare preview iframe
+    // on any failure; without one, go straight to the iframe so PDFs still
+    // work with zero setup.
+    if (apiKey) {
+      try {
+        return await renderPdfReader(item.driveFileId, apiKey);
+      } catch (err) {
+        console.error("Grimoire: PDF reader failed, falling back to the plain preview —", err);
+      }
+    }
     const iframe = el("iframe", { src: driveFilePreviewUrl(item.driveFileId), allow: "autoplay" });
     return iframe;
   }

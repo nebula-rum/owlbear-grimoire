@@ -29,11 +29,13 @@ export interface VaultItem {
 
 export interface VaultConfig {
   /** Google Cloud API key with the Drive API enabled, used to fetch raw
-   *  markdown file contents (needed for full rendering). Not needed for
-   *  PDFs, which are shown via Drive's own preview iframe. This key is
-   *  meant to be restricted by HTTP referrer to your extension's hosted
-   *  domain, so storing it in shared room metadata (visible to players'
-   *  clients, same as everything else here) is the intended, safe use. */
+   *  markdown file contents (needed for full rendering) and, for PDFs, to
+   *  power the full reader (page navigation, zoom, thumbnail rail) instead
+   *  of Drive's bare preview iframe. Without it PDFs still work via that
+   *  iframe, just without the extra controls. This key is meant to be
+   *  restricted by HTTP referrer to your extension's hosted domain, so
+   *  storing it in shared room metadata (visible to players' clients, same
+   *  as everything else here) is the intended, safe use. */
   driveApiKey?: string;
 }
 

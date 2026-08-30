@@ -185,11 +185,15 @@ function saveApiKey(key: string) {
 
 // -------------------------------------------------------------- viewing --
 
-// A "decent" size rather than full-screen — big enough to comfortably read
-// a PDF or a page of notes, small enough to still see the scene behind it,
-// in the same spirit as a character-sheet extension's window.
-const VIEWER_WIDTH = 900;
-const VIEWER_HEIGHT = 720;
+// Sized to show a whole portrait PDF page (US Letter/A4-ish ratio) at a
+// readable scale once the reader's thumbnail rail and toolbar are accounted
+// for, while still leaving the scene visible around it rather than going
+// full-screen. Owlbear's modal has no explicit centering option — per its
+// SDK types there's nothing to set beyond width/height/fullScreen — but its
+// dialogs center by default, same as other extensions that just pass a
+// fixed size.
+const VIEWER_WIDTH = 880;
+const VIEWER_HEIGHT = 1040;
 
 function openViewer(item: VaultItem) {
   OBR.modal.open({
