@@ -3,7 +3,7 @@
 import OBR from "@owlbear-rodeo/sdk";
 import { initTheme } from "./theme";
 import { loadVault } from "./store";
-import { driveFilePreviewUrl, driveFileViewUrl } from "./drive";
+import { driveFilePreviewUrl, driveFileViewUrl, fetchDriveThumbnail } from "./drive";
 import { fetchRenderedMarkdown, MarkdownFetchError } from "./markdown";
 import { VaultItem } from "./types";
 
@@ -25,6 +25,19 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 function getItemId(): string | null {
   return new URLSearchParams(window.location.search).get("id");
+}
+
+/** The URL to send someone to if they want this open as a real browser tab
+ *  instead of embedded here — the original Drive share link for pdf/markdown,
+ *  or the item's own URL for a plain link. */
+function externalUrlFor(item: VaultItem): string | null {
+  if ((item.type === "pdf" || item.type === "markdown") && item.driveFileId) {
+    return item.url ?? driveFileViewUrl(item.driveFileId);
+  }
+  if (item.type === "link" && item.linkUrl) {
+    return item.linkUrl;
+  }
+  return null;
 }
 
 async function renderContent(item: VaultItem, apiKey: string | undefined): Promise<Node> {
@@ -88,10 +101,35 @@ async function boot() {
   const closeBtn = el("button", { class: "icon-btn", type: "button", title: "Close" }, ["✕"]);
   closeBtn.onclick = () => OBR.modal.close(MODAL_ID);
 
-  const header = el("div", { class: "viewer-header" }, [
-    el("h1", {}, [item ? item.name : "Not found"]),
-    closeBtn,
-  ]);
+  const headerChildren: (Node | string)[] = [];
+
+  if (item?.type === "pdf" && item.driveFileId && vault.config.driveApiKey) {
+    const thumbImg = el("img", { class: "viewer-header-thumb", alt: "" }) as HTMLImageElement;
+    thumbImg.hidden = true;
+    headerChildren.push(thumbImg);
+    fetchDriveThumbnail(item.driveFileId, vault.config.driveApiKey).then((link) => {
+      if (link) {
+        thumbImg.src = link;
+        thumbImg.hidden = false;
+      }
+    });
+  }
+
+  headerChildren.push(el("h1", {}, [item ? item.name : "Not found"]));
+
+  const externalUrl = item ? externalUrlFor(item) : null;
+  if (externalUrl) {
+    const openBtn = el(
+      "a",
+      { class: "icon-btn", href: externalUrl, target: "_blank", rel: "noopener noreferrer", title: "Open in a new browser tab" },
+      ["↗"],
+    );
+    headerChildren.push(openBtn);
+  }
+
+  headerChildren.push(closeBtn);
+
+  const header = el("div", { class: "viewer-header" }, headerChildren);
   app.append(header);
 
   const content = el("div", { class: "viewer-content" });
