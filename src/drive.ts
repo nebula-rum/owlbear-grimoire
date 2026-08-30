@@ -52,3 +52,23 @@ export function driveApiMediaUrl(fileId: string, apiKey: string): string {
     fileId,
   )}?${params.toString()}`;
 }
+
+/**
+ * Fetch the small cover thumbnail Drive auto-generates for a file (usually
+ * a render of page 1), if it has one — not every file gets one, and it
+ * requires the same API key as Markdown rendering. Returns null rather than
+ * throwing on any failure (missing key, no thumbnail, network error), since
+ * this is always a "nice to have" next to the plain type icon.
+ */
+export async function fetchDriveThumbnail(fileId: string, apiKey: string): Promise<string | null> {
+  const params = new URLSearchParams({ fields: "thumbnailLink", key: apiKey });
+  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params.toString()}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = (await response.json()) as { thumbnailLink?: string };
+    return data.thumbnailLink ?? null;
+  } catch {
+    return null;
+  }
+}
