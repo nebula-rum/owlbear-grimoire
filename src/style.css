@@ -35,6 +35,10 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  /* Containing block for the viewer screen's browse-drawer backdrop/panel
+     (position: absolute) — harmless for the tree screen, which has no
+     absolutely-positioned descendants. */
+  position: relative;
 }
 
 .loading {
@@ -391,16 +395,7 @@ button.node-name:hover {
   justify-content: flex-end;
 }
 
-/* ---------- viewer page ---------- */
-
-.viewer-body,
-.viewer-body #app {
-  background: var(--ob-bg);
-}
-
-.viewer-body #app {
-  position: relative;
-}
+/* ---------- viewer screen ---------- */
 
 .viewer-header {
   display: flex;

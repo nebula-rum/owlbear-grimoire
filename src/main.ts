@@ -1,12 +1,42 @@
-// Popover UI: the folder tree, GM editing controls, and the settings panel.
+// The extension's single action popover: the folder tree, GM editing
+// controls, and the settings panel (the "tree screen"), plus — in place,
+// same popover — the item viewer (the "viewer screen": PDF reader / rendered
+// Markdown / external link, with its own "Browse" drawer and Present
+// button). Switching screens resizes the popover itself via
+// OBR.action.setWidth/setHeight rather than opening a second modal/popover,
+// because OBR.action is the one thing Owlbear genuinely keeps docked to the
+// toolbar — see CLAUDE.md's "Owlbear SDK constraints" section for why a
+// *second* positioned popover didn't actually stay docked in practice.
 import OBR from "@owlbear-rodeo/sdk";
 import { initTheme } from "./theme";
 import { loadVault, onVaultChange, saveVault, VaultSizeError } from "./store";
-import { childrenOf, isEffectivelyHidden, nextOrder, wouldCreateCycle, descendantIds } from "./tree";
-import { extractDriveFileId, fetchDriveThumbnail, checkDriveApiKey } from "./drive";
+import { childrenOf, isEffectivelyHidden, ancestorIds, nextOrder, wouldCreateCycle, descendantIds } from "./tree";
+import {
+  extractDriveFileId,
+  fetchDriveThumbnail,
+  checkDriveApiKey,
+  driveFilePreviewUrl,
+  driveFileViewUrl,
+} from "./drive";
+import { fetchRenderedMarkdown, MarkdownFetchError } from "./markdown";
+import { renderPdfReader } from "./pdfReader";
 import { newId, VaultData, VaultItem, VaultItemType, EMPTY_VAULT } from "./types";
-import { openViewerPopover, PRESENT_CHANNEL, PresentMessage } from "./viewerPopover";
+import { PRESENT_CHANNEL, PresentMessage, broadcastPresent, consumePendingPresentedItem, clearPendingPresentedItem } from "./present";
 import { TYPE_META } from "./itemMeta";
+
+// Sizes for the two screens the popover can be in. TREE_* mirrors
+// manifest.json's action.width/height (that manifest value is only the
+// *initial* size Owlbear opens the popover at — it's undocumented whether a
+// resized popover resets on next open, so boot() below always explicitly
+// sets one of these two rather than assuming the manifest default still
+// holds).
+const TREE_WIDTH = 420;
+const TREE_HEIGHT = 640;
+// Sized to show a whole portrait PDF page (US Letter/A4-ish ratio) at a
+// readable scale once the reader's thumbnail rail and toolbar are accounted
+// for.
+const VIEWER_WIDTH = 880;
+const VIEWER_HEIGHT = 1040;
 
 // ---------------------------------------------------------------- state --
 
@@ -177,27 +207,17 @@ function saveApiKey(key: string) {
   showToast("API key saved.");
 }
 
-// -------------------------------------------------------------- viewing --
-
-function openViewer(item: VaultItem) {
-  void openViewerPopover(item.id);
-}
-
 /** GM-only "push to table": force this item open in every connected
- *  client's viewer right now, regardless of its hidden flag or whether
- *  anyone has the sidebar open. Doesn't change the item's persistent
+ *  client's popover right now, regardless of its hidden flag or whether
+ *  anyone has the popover open. Doesn't change the item's persistent
  *  visibility — it's a live spotlight, not the same as revealing it (use
- *  the 👁 toggle for that). */
+ *  the 👁 toggle for that). Shared by both screens' Present buttons. */
 function presentItem(item: VaultItem) {
-  void OBR.broadcast.sendMessage(
-    PRESENT_CHANNEL,
-    { itemId: item.id } satisfies PresentMessage,
-    { destination: "ALL" },
-  );
+  void broadcastPresent(item.id);
   showToast(`Presented "${item.name}" to the table.`);
 }
 
-// --------------------------------------------------------------- render --
+// --------------------------------------------------------------- shared --
 
 const app = document.getElementById("app")!;
 
@@ -214,6 +234,14 @@ function el<K extends keyof HTMLElementTagNameMap>(
   children.forEach((c) => node.append(c));
   return node;
 }
+
+function renderToast() {
+  if (toast) {
+    app.append(el("div", { class: "toast" }, [toast]));
+  }
+}
+
+// ----------------------------------------------------------- tree screen --
 
 function renderAddForm(parentId: string | null): HTMLElement {
   const form = el("div", { class: "add-form" });
@@ -350,7 +378,7 @@ function renderNode(item: VaultItem, depth: number): HTMLElement {
     row.append(btn);
   } else {
     const btn = el("button", { class: "node-name", type: "button" }, [item.name]);
-    btn.onclick = () => openViewer(item);
+    btn.onclick = () => openViewerScreen(item.id);
     row.append(btn);
   }
 
@@ -445,7 +473,7 @@ function renderNode(item: VaultItem, depth: number): HTMLElement {
   return wrapper;
 }
 
-function render() {
+function renderTreeScreen() {
   app.innerHTML = "";
 
   const header = el("header", { class: "header" }, [
@@ -529,9 +557,356 @@ function render() {
   }
   app.append(scroll);
 
-  if (toast) {
-    app.append(el("div", { class: "toast" }, [toast]));
+  renderToast();
+}
+
+// ---------------------------------------------------------- viewer screen --
+// Ported from the extension's old separate viewer.html/viewer.ts (which
+// opened as its own OBR.modal, then OBR.popover) — now rendered in place in
+// the same popover as the tree, so it inherits the action popover's genuine
+// toolbar-docked position instead of relying on a positioning hint Owlbear's
+// real client doesn't actually honor (see CLAUDE.md).
+
+let viewerItemId: string | null = null;
+let viewerBrowseOpen = false;
+const viewerBrowseExpanded = new Set<string>();
+let viewerHeaderEl: HTMLElement | null = null;
+let viewerContentEl: HTMLElement | null = null;
+let viewerBrowseBackdropEl: HTMLElement | null = null;
+let viewerBrowseDrawerEl: HTMLElement | null = null;
+
+/** The URL to send someone to if they want this open as a real browser tab
+ *  instead of embedded here — the original Drive share link for pdf/markdown,
+ *  or the item's own URL for a plain link. */
+function externalUrlFor(item: VaultItem): string | null {
+  if ((item.type === "pdf" || item.type === "markdown") && item.driveFileId) {
+    return item.url ?? driveFileViewUrl(item.driveFileId);
   }
+  if (item.type === "link" && item.linkUrl) {
+    return item.linkUrl;
+  }
+  return null;
+}
+
+async function buildViewerNode(
+  item: VaultItem,
+  apiKey: string | undefined,
+  onProgress: (percent: number | null) => void,
+): Promise<Node> {
+  if (item.type === "pdf" && item.driveFileId) {
+    // The full reader (page nav, zoom, thumbnail rail) needs the file's raw
+    // bytes, which requires the same Drive API key Markdown rendering uses.
+    // With a key, try it first and fall back to Drive's bare preview iframe
+    // on any failure; without one, go straight to the iframe so PDFs still
+    // work with zero setup.
+    if (apiKey) {
+      try {
+        return await renderPdfReader(item.driveFileId, apiKey, onProgress);
+      } catch (err) {
+        console.error("Grimoire: PDF reader failed, falling back to the plain preview —", err);
+      }
+    }
+    const iframe = el("iframe", { src: driveFilePreviewUrl(item.driveFileId), allow: "autoplay" });
+    return iframe;
+  }
+
+  if (item.type === "markdown" && item.driveFileId) {
+    if (!apiKey) {
+      return el("div", { class: "center-message" }, [
+        el("p", {}, ["No Google Drive API key is set yet, so this Markdown file can't be fetched and rendered."]),
+        el("p", {}, [
+          "Open ⚙ Settings and add a free API key (see the README's Markdown setup section).",
+        ]),
+        el(
+          "a",
+          { href: driveFileViewUrl(item.driveFileId), target: "_blank", rel: "noopener noreferrer", class: "btn" },
+          ["Open the raw file in Google Drive instead"],
+        ),
+      ]);
+    }
+    try {
+      const html = await fetchRenderedMarkdown(item.driveFileId, apiKey);
+      const pane = el("div", { class: "markdown-pane" });
+      pane.innerHTML = html;
+      return pane;
+    } catch (err) {
+      const message = err instanceof MarkdownFetchError ? err.message : "Something went wrong rendering this file.";
+      return el("div", { class: "center-message" }, [
+        el("p", {}, [message]),
+        el(
+          "a",
+          { href: driveFileViewUrl(item.driveFileId), target: "_blank", rel: "noopener noreferrer", class: "btn" },
+          ["Open the raw file in Google Drive instead"],
+        ),
+      ]);
+    }
+  }
+
+  if (item.type === "link" && item.linkUrl) {
+    return el("div", { class: "center-message" }, [
+      el("p", {}, ["This is an external link. Many sites block being shown inside another page, so it opens in a new tab instead."]),
+      el("a", { href: item.linkUrl, target: "_blank", rel: "noopener noreferrer", class: "btn" }, ["Open link ↗"]),
+    ]);
+  }
+
+  return el("div", { class: "center-message" }, [el("p", {}, ["Nothing to display for this item."])]);
+}
+
+function renderViewerBrowseNode(item: VaultItem, container: HTMLElement) {
+  const wrapper = el("div", { class: "node" });
+  const isFolder = item.type === "folder";
+  const row = el("div", { class: `node-row${role === "GM" && item.hidden ? " hidden-item" : ""}` });
+
+  if (isFolder) {
+    const toggle = el("button", { class: "node-toggle", type: "button" }, [
+      viewerBrowseExpanded.has(item.id) ? "▾" : "▸",
+    ]);
+    toggle.onclick = () => {
+      if (viewerBrowseExpanded.has(item.id)) viewerBrowseExpanded.delete(item.id);
+      else viewerBrowseExpanded.add(item.id);
+      renderViewerBrowseDrawer();
+    };
+    row.append(toggle);
+  } else {
+    row.append(el("span", { class: "node-toggle" }, [""]));
+  }
+
+  row.append(el("span", { class: "node-icon" }, [TYPE_META[item.type].icon]));
+
+  if (isFolder) {
+    const btn = el("button", { class: "node-name", type: "button" }, [item.name]);
+    btn.onclick = () => {
+      if (viewerBrowseExpanded.has(item.id)) viewerBrowseExpanded.delete(item.id);
+      else viewerBrowseExpanded.add(item.id);
+      renderViewerBrowseDrawer();
+    };
+    row.append(btn);
+  } else {
+    const active = item.id === viewerItemId;
+    const btn = el("button", { class: `node-name${active ? " active" : ""}`, type: "button" }, [item.name]);
+    btn.onclick = () => void showViewerItem(item.id);
+    row.append(btn);
+  }
+
+  wrapper.append(row);
+
+  if (isFolder && viewerBrowseExpanded.has(item.id)) {
+    const kids = childrenOf(vault.items, item.id).filter(
+      (child) => role === "GM" || !isEffectivelyHidden(vault.items, child),
+    );
+    const childWrap = el("div", { class: "node-children" });
+    kids.forEach((child) => renderViewerBrowseNode(child, childWrap));
+    wrapper.append(childWrap);
+  }
+
+  container.append(wrapper);
+}
+
+/** Rebuilds the slide-out item switcher from scratch. Safe (and cheap) to
+ *  call any time viewer state changes — it's a no-op beyond tearing down the
+ *  old DOM when `viewerBrowseOpen` is false. */
+function renderViewerBrowseDrawer() {
+  viewerBrowseBackdropEl?.remove();
+  viewerBrowseDrawerEl?.remove();
+  viewerBrowseBackdropEl = null;
+  viewerBrowseDrawerEl = null;
+  if (!viewerBrowseOpen) return;
+
+  const backdrop = el("div", { class: "viewer-browse-backdrop" });
+  backdrop.onclick = () => {
+    viewerBrowseOpen = false;
+    renderViewerBrowseDrawer();
+  };
+
+  const closeBtn = el("button", { class: "icon-btn", type: "button", title: "Close" }, ["✕"]);
+  closeBtn.onclick = () => {
+    viewerBrowseOpen = false;
+    renderViewerBrowseDrawer();
+  };
+
+  const treeEl = el("div", { class: "viewer-browse-tree tree-scroll" });
+  const roots = childrenOf(vault.items, null).filter(
+    (item) => role === "GM" || !isEffectivelyHidden(vault.items, item),
+  );
+  if (roots.length === 0) {
+    treeEl.append(el("div", { class: "empty-state" }, [el("p", {}, ["Nothing here yet."])]));
+  } else {
+    roots.forEach((item) => renderViewerBrowseNode(item, treeEl));
+  }
+
+  const drawer = el("div", { class: "viewer-browse-drawer" }, [
+    el("div", { class: "viewer-browse-header" }, [el("h2", {}, ["Browse"]), closeBtn]),
+    treeEl,
+  ]);
+
+  app.append(backdrop, drawer);
+  viewerBrowseBackdropEl = backdrop;
+  viewerBrowseDrawerEl = drawer;
+}
+
+function renderViewerHeader(item: VaultItem | undefined) {
+  const headerEl = viewerHeaderEl!;
+  headerEl.innerHTML = "";
+
+  const browseBtn = el("button", { class: "icon-btn", type: "button", title: "Browse other items" }, ["☰"]);
+  browseBtn.onclick = () => {
+    viewerBrowseOpen = !viewerBrowseOpen;
+    if (viewerBrowseOpen && viewerItemId) {
+      const current = vault.items.find((i) => i.id === viewerItemId);
+      if (current) ancestorIds(vault.items, current).forEach((id) => viewerBrowseExpanded.add(id));
+    }
+    renderViewerBrowseDrawer();
+  };
+  headerEl.append(browseBtn);
+
+  if (item?.type === "pdf" && item.driveFileId && vault.config.driveApiKey) {
+    const thumbImg = el("img", { class: "viewer-header-thumb", alt: "" }) as HTMLImageElement;
+    thumbImg.hidden = true;
+    headerEl.append(thumbImg);
+    const forItemId = item.id;
+    fetchDriveThumbnail(item.driveFileId, vault.config.driveApiKey).then((link) => {
+      // Discard a slow thumbnail fetch if the user has since switched away.
+      if (link && viewerItemId === forItemId) {
+        thumbImg.src = link;
+        thumbImg.hidden = false;
+      }
+    });
+  }
+
+  headerEl.append(el("h1", {}, [item ? item.name : "Not found"]));
+
+  if (item && role === "GM") {
+    const presentBtn = el(
+      "button",
+      { class: "icon-btn", type: "button", title: "Present to players — force this open on every screen" },
+      ["\u{1F4E3}"], // 📣
+    );
+    presentBtn.onclick = () => presentItem(item);
+    headerEl.append(presentBtn);
+  }
+
+  const externalUrl = item ? externalUrlFor(item) : null;
+  if (externalUrl) {
+    const openBtn = el(
+      "a",
+      { class: "icon-btn", href: externalUrl, target: "_blank", rel: "noopener noreferrer", title: "Open in a new browser tab" },
+      ["↗"],
+    );
+    headerEl.append(openBtn);
+  }
+
+  const closeBtn = el("button", { class: "icon-btn", type: "button", title: "Close" }, ["✕"]);
+  closeBtn.onclick = () => closeViewerScreen();
+  headerEl.append(closeBtn);
+}
+
+async function renderViewerContent(item: VaultItem | undefined) {
+  const contentEl = viewerContentEl!;
+  contentEl.innerHTML = "";
+
+  if (!item) {
+    contentEl.append(
+      el("div", { class: "center-message" }, [
+        el("p", {}, ["This item couldn't be found — it may have been deleted or moved."]),
+      ]),
+    );
+    return;
+  }
+
+  const loadingEl = el("div", { class: "loading" }, ["Loading…"]);
+  contentEl.append(loadingEl);
+
+  const forItemId = item.id;
+  // Only the PDF path actually reports progress (a Drive fetch of a large
+  // file is the one part of this that can take a while); every other
+  // branch resolves fast enough that the plain "Loading…" never lingers.
+  const rendered = await buildViewerNode(item, vault.config.driveApiKey, (percent) => {
+    if (viewerItemId !== forItemId) return; // switched away mid-load
+    loadingEl.textContent = percent != null ? `Loading… ${percent}%` : "Loading…";
+  });
+  if (viewerItemId !== forItemId) return; // switched away while awaiting; discard
+
+  contentEl.innerHTML = "";
+  contentEl.append(rendered);
+}
+
+/** Switches the viewer to show a different item in place — no popover
+ *  re-open, no iframe reload — so the GM/player can jump between handouts
+ *  without ever leaving the viewer screen. Assumes the viewer screen is
+ *  already mounted (viewerHeaderEl/viewerContentEl exist) — call
+ *  openViewerScreen() first if it might not be. */
+async function showViewerItem(itemId: string | null) {
+  viewerItemId = itemId;
+  viewerBrowseOpen = false;
+  if (itemId) {
+    try {
+      history.replaceState(null, "", `${window.location.pathname}?item=${encodeURIComponent(itemId)}`);
+    } catch {
+      // Cosmetic only (keeps the URL in sync so a reload lands on the same
+      // item) — ignore if the embedding context disallows history writes.
+    }
+  }
+  renderViewerBrowseDrawer();
+  const item = itemId ? vault.items.find((i) => i.id === itemId) : undefined;
+  renderViewerHeader(item);
+  await renderViewerContent(item);
+}
+
+/** Switches the popover into the viewer screen showing the given item,
+ *  mounting the viewer's header/content elements and resizing the popover
+ *  if it isn't already the active screen. Safe to call repeatedly (e.g. from
+ *  a live Present broadcast while already viewing something else) — it just
+ *  re-targets in place without tearing anything down. */
+function openViewerScreen(itemId: string) {
+  if (screen !== "viewer") {
+    screen = "viewer";
+    app.innerHTML = "";
+    viewerHeaderEl = el("div", { class: "viewer-header" });
+    viewerContentEl = el("div", { class: "viewer-content" });
+    app.append(viewerHeaderEl, viewerContentEl);
+    void OBR.action.setWidth(VIEWER_WIDTH);
+    void OBR.action.setHeight(VIEWER_HEIGHT);
+  }
+  void showViewerItem(itemId);
+}
+
+function closeViewerScreen() {
+  screen = "tree";
+  viewerItemId = null;
+  viewerHeaderEl = null;
+  viewerContentEl = null;
+  viewerBrowseOpen = false;
+  viewerBrowseBackdropEl = null;
+  viewerBrowseDrawerEl = null;
+  try {
+    history.replaceState(null, "", window.location.pathname);
+  } catch {
+    // Cosmetic only — see showViewerItem.
+  }
+  void OBR.action.setWidth(TREE_WIDTH);
+  void OBR.action.setHeight(TREE_HEIGHT);
+  render();
+}
+
+// ------------------------------------------------------------- dispatch --
+
+type Screen = "tree" | "viewer";
+let screen: Screen = "tree";
+
+/** The single entry point every state-changing action calls. Routes to
+ *  whichever screen is currently active; the viewer branch deliberately
+ *  only refreshes the header/browse-drawer chrome (name/thumbnail may have
+ *  changed) rather than re-running showViewerItem — that would re-fetch and
+ *  re-render the PDF/Markdown (slow, and disruptive mid-read) just because
+ *  something unrelated changed elsewhere in the vault. */
+function render() {
+  if (screen === "viewer") {
+    renderViewerHeader(viewerItemId ? vault.items.find((i) => i.id === viewerItemId) : undefined);
+    renderViewerBrowseDrawer();
+    renderToast();
+    return;
+  }
+  renderTreeScreen();
 }
 
 // ----------------------------------------------------------------- boot --
@@ -556,7 +931,18 @@ OBR.onReady(async () => {
     initTheme();
     role = await OBR.player.getRole();
     vault = await loadVault();
-    render();
+
+    // A pending "present" (set by background.ts right before it forced this
+    // popover open) wins over the ?item= URL param, which only exists so a
+    // reload while already viewing something lands back on the same item.
+    const pendingItemId = consumePendingPresentedItem() ?? new URLSearchParams(window.location.search).get("item");
+    if (pendingItemId) {
+      openViewerScreen(pendingItemId);
+    } else {
+      render();
+      void OBR.action.setWidth(TREE_WIDTH);
+      void OBR.action.setHeight(TREE_HEIGHT);
+    }
 
     OBR.player.onChange((player) => {
       if (player.role !== role) {
@@ -568,6 +954,17 @@ OBR.onReady(async () => {
     onVaultChange((next) => {
       vault = next;
       render();
+    });
+
+    // Only fires while this popover is actually mounted — a player who
+    // doesn't have it open relies on background.ts + the pending-item check
+    // above instead.
+    OBR.broadcast.onMessage(PRESENT_CHANNEL, (event) => {
+      const data = event.data as Partial<PresentMessage> | undefined;
+      if (data && typeof data.itemId === "string") {
+        clearPendingPresentedItem();
+        openViewerScreen(data.itemId);
+      }
     });
   } catch (err) {
     renderFatalError(err);

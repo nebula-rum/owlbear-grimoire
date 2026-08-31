@@ -162,10 +162,9 @@ is stored with the rest of the vault data — see the privacy note below for wha
 ```
 public/manifest.json   Owlbear extension manifest
 public/icon.svg         Toolbar icon
-index.html              Popover entry point
-viewer.html              Full-screen content viewer entry point
-src/main.ts               Popover UI: tree rendering, GM editing, settings panel
-src/viewer.ts              Viewer: picks how to render a PDF / Markdown / link item
+index.html              Popover entry point (folder tree screen and item viewer screen, in one popover)
+src/main.ts               Popover UI: tree rendering, GM editing, settings panel, and the item viewer screen
+src/present.ts              "Present to players" broadcast + cross-frame pending-item handoff
 src/store.ts                Reads/writes the grimoire to Owlbear room metadata
 src/tree.ts                  Pure helpers for the folder tree (children, visibility, moving)
 src/drive.ts                  Parses Google Drive share links, builds preview/API URLs

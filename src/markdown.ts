@@ -6,6 +6,17 @@ import { driveApiMediaUrl } from "./drive";
 
 marked.setOptions({ breaks: true, gfm: true });
 
+// Rendered links otherwise navigate the embedded viewer iframe itself in
+// place — which Owlbear's host sandboxing silently blocks, making the link
+// appear dead — instead of opening a real browser tab like every other link
+// in this app (see viewer.ts's "Open ↗" buttons).
+DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName === "A") {
+    node.setAttribute("target", "_blank");
+    node.setAttribute("rel", "noopener noreferrer");
+  }
+});
+
 export class MarkdownFetchError extends Error {}
 
 /**

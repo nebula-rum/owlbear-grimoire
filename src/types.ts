@@ -8,7 +8,7 @@
 export type VaultItemType = "folder" | "pdf" | "markdown" | "link";
 
 export interface VaultItem {
-  /** Stable random id, used as parentId by children and as viewer.html's ?id= */
+  /** Stable random id, used as parentId by children and as index.html's ?item= */
   id: string;
   name: string;
   type: VaultItemType;
