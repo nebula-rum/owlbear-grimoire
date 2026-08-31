@@ -574,12 +574,13 @@ let viewerHeaderEl: HTMLElement | null = null;
 let viewerContentEl: HTMLElement | null = null;
 
 /** The URL to send someone to if they want this open as a real browser tab
- *  instead of embedded here — the original Drive share link for pdf/markdown,
- *  or the item's own URL for a plain link. */
+ *  instead of embedded here — only for a plain "link" item, where the
+ *  header's "↗" button is the *only* way to actually reach it (there's
+ *  nothing embedded to show for that type). Deliberately omitted for
+ *  pdf/markdown: those already render inline, and the header button was
+ *  otherwise just a one-click shortcut to Drive's own view (with its own
+ *  prominent Download button) — not something to offer up for free. */
 function externalUrlFor(item: VaultItem): string | null {
-  if ((item.type === "pdf" || item.type === "markdown") && item.driveFileId) {
-    return item.url ?? driveFileViewUrl(item.driveFileId);
-  }
   if (item.type === "link" && item.linkUrl) {
     return item.linkUrl;
   }
