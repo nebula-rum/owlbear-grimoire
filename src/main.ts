@@ -341,20 +341,6 @@ function renderNode(item: VaultItem, depth: number): HTMLElement {
   const hiddenHere = item.hidden;
   const row = el("div", { class: `node-row${role === "GM" && hiddenHere ? " hidden-item" : ""}` });
 
-  if (isFolder) {
-    const toggle = el("button", { class: "node-toggle", type: "button" }, [
-      expanded.has(item.id) ? "▾" : "▸",
-    ]);
-    toggle.onclick = () => {
-      if (expanded.has(item.id)) expanded.delete(item.id);
-      else expanded.add(item.id);
-      render();
-    };
-    row.append(toggle);
-  } else {
-    row.append(el("span", { class: "node-toggle" }, [""]));
-  }
-
   const thumbnail =
     item.type === "pdf" && item.driveFileId
       ? getOrFetchThumbnail(item.driveFileId, vault.config.driveApiKey)
@@ -672,20 +658,6 @@ function renderViewerBrowseNode(item: VaultItem, container: HTMLElement) {
   const wrapper = el("div", { class: "node" });
   const isFolder = item.type === "folder";
   const row = el("div", { class: `node-row${role === "GM" && item.hidden ? " hidden-item" : ""}` });
-
-  if (isFolder) {
-    const toggle = el("button", { class: "node-toggle", type: "button" }, [
-      viewerBrowseExpanded.has(item.id) ? "▾" : "▸",
-    ]);
-    toggle.onclick = () => {
-      if (viewerBrowseExpanded.has(item.id)) viewerBrowseExpanded.delete(item.id);
-      else viewerBrowseExpanded.add(item.id);
-      renderViewerBrowseDrawer();
-    };
-    row.append(toggle);
-  } else {
-    row.append(el("span", { class: "node-toggle" }, [""]));
-  }
 
   row.append(el("span", { class: "node-icon" }, [TYPE_META[item.type].icon]));
 
