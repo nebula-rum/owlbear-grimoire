@@ -36,6 +36,21 @@ export function descendantIds(items: VaultItem[], folderId: string): string[] {
   return result;
 }
 
+/** Ids of every ancestor folder of `item`, root-first. Used to auto-expand
+ *  a tree down to a specific item (e.g. the one currently on screen). */
+export function ancestorIds(items: VaultItem[], item: VaultItem): string[] {
+  const result: string[] = [];
+  let parentId = item.parentId;
+  const seen = new Set<string>();
+  while (parentId && !seen.has(parentId)) {
+    seen.add(parentId);
+    result.unshift(parentId);
+    const parent = items.find((i) => i.id === parentId);
+    parentId = parent ? parent.parentId : null;
+  }
+  return result;
+}
+
 export function nextOrder(items: VaultItem[], parentId: string | null): number {
   const siblings = childrenOf(items, parentId);
   return siblings.length ? siblings[siblings.length - 1].order + 1 : 0;

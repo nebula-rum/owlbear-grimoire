@@ -5,17 +5,8 @@ import { loadVault, onVaultChange, saveVault, VaultSizeError } from "./store";
 import { childrenOf, isEffectivelyHidden, nextOrder, wouldCreateCycle, descendantIds } from "./tree";
 import { extractDriveFileId, fetchDriveThumbnail, checkDriveApiKey } from "./drive";
 import { newId, VaultData, VaultItem, VaultItemType, EMPTY_VAULT } from "./types";
-
-const TYPE_META: Record<VaultItemType, { icon: string; label: string }> = {
-  folder: { icon: "📁", label: "Folder" }, // 📁
-  pdf: { icon: "📄", label: "PDF" }, // 📄
-  markdown: { icon: "📝", label: "Markdown" }, // 📝
-  link: { icon: "🔗", label: "Link" }, // 🔗
-};
-
-function resolveUrl(path: string): string {
-  return new URL(path, window.location.href).toString();
-}
+import { openViewerModal, PRESENT_CHANNEL, PresentMessage } from "./viewerModal";
+import { TYPE_META } from "./itemMeta";
 
 // ---------------------------------------------------------------- state --
 
@@ -188,23 +179,22 @@ function saveApiKey(key: string) {
 
 // -------------------------------------------------------------- viewing --
 
-// Sized to show a whole portrait PDF page (US Letter/A4-ish ratio) at a
-// readable scale once the reader's thumbnail rail and toolbar are accounted
-// for, while still leaving the scene visible around it rather than going
-// full-screen. Owlbear's modal has no explicit centering option — per its
-// SDK types there's nothing to set beyond width/height/fullScreen — but its
-// dialogs center by default, same as other extensions that just pass a
-// fixed size.
-const VIEWER_WIDTH = 880;
-const VIEWER_HEIGHT = 1040;
-
 function openViewer(item: VaultItem) {
-  OBR.modal.open({
-    id: "dev.fede.grimoire/viewer",
-    url: resolveUrl(`viewer.html?id=${encodeURIComponent(item.id)}`),
-    width: VIEWER_WIDTH,
-    height: VIEWER_HEIGHT,
-  });
+  void openViewerModal(item.id);
+}
+
+/** GM-only "push to table": force this item open in every connected
+ *  client's viewer right now, regardless of its hidden flag or whether
+ *  anyone has the sidebar open. Doesn't change the item's persistent
+ *  visibility — it's a live spotlight, not the same as revealing it (use
+ *  the 👁 toggle for that). */
+function presentItem(item: VaultItem) {
+  void OBR.broadcast.sendMessage(
+    PRESENT_CHANNEL,
+    { itemId: item.id } satisfies PresentMessage,
+    { destination: "ALL" },
+  );
+  showToast(`Presented "${item.name}" to the table.`);
 }
 
 // --------------------------------------------------------------- render --
@@ -404,6 +394,16 @@ function renderNode(item: VaultItem, depth: number): HTMLElement {
     );
     visBtn.onclick = () => toggleHidden(item.id);
     actions.append(visBtn);
+
+    if (!isFolder) {
+      const presentBtn = el(
+        "button",
+        { type: "button", title: "Present to players — force this open on every screen" },
+        ["\u{1F4E3}"], // 📣
+      );
+      presentBtn.onclick = () => presentItem(item);
+      actions.append(presentBtn);
+    }
 
     const delBtn = el(
       "button",

@@ -5,6 +5,7 @@
   "description": "Organize rules references and lore (PDF & Markdown from Google Drive) into folders and reveal them to players when you're ready.",
   "author": "nebula-rum",
   "icon": "/owlbear-grimoire/icon.svg",
+  "background_url": "/owlbear-grimoire/background.html",
   "action": {
     "title": "Grimoire",
     "icon": "/owlbear-grimoire/icon.svg",

@@ -1,5 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <path d="M16 7 Q22 7.5 27 9 L27 23 Q22 24.5 16 25 Z" fill="#efe6d8" stroke="#4a3384" stroke-width="1.5" stroke-linejoin="round"/>
-  <path d="M16 7 Q10 7.5 5 9 L5 23 Q10 24.5 16 25 Z" fill="#efe6d8" stroke="#4a3384" stroke-width="1.5" stroke-linejoin="round"/>
-  <path d="M16 7 V25" stroke="#4a3384" stroke-width="1.6"/>
+  <!-- Owlbear's toolbar renders extension action icons as flat white line
+       art — it ignores fill/stroke colors entirely, so this is drawn with
+       bold, uncluttered strokes and no reliance on fill so it stays legible
+       at real toolbar size (confirmed against a live screenshot). -->
+  <g fill="none" stroke="#f2f1f6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="5" width="22" height="24" rx="2.5" stroke-width="2.4"/>
+    <path d="M11 5 V29" stroke-width="2"/>
+    <path d="M20 5 V16 L17 13 L14 16 V5" stroke-width="2"/>
+  </g>
 </svg>

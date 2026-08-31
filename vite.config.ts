@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         viewer: resolve(__dirname, "viewer.html"),
+        background: resolve(__dirname, "background.html"),
       },
     },
   },

@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Grimoire Background</title>
+  </head>
+  <body>
+    <!-- No UI here on purpose: Owlbear loads this invisibly for every
+         connected client per manifest.json's background_url, purely so
+         background.ts can listen for broadcasts. -->
+    <script type="module" src="/src/background.ts"></script>
+  </body>
+</html>
