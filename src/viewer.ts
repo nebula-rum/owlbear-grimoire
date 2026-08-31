@@ -41,7 +41,11 @@ function externalUrlFor(item: VaultItem): string | null {
   return null;
 }
 
-async function renderContent(item: VaultItem, apiKey: string | undefined): Promise<Node> {
+async function renderContent(
+  item: VaultItem,
+  apiKey: string | undefined,
+  onProgress: (percent: number | null) => void,
+): Promise<Node> {
   if (item.type === "pdf" && item.driveFileId) {
     // The full reader (page nav, zoom, thumbnail rail) needs the file's raw
     // bytes, which requires the same Drive API key Markdown rendering uses.
@@ -50,7 +54,7 @@ async function renderContent(item: VaultItem, apiKey: string | undefined): Promi
     // work with zero setup.
     if (apiKey) {
       try {
-        return await renderPdfReader(item.driveFileId, apiKey);
+        return await renderPdfReader(item.driveFileId, apiKey, onProgress);
       } catch (err) {
         console.error("Grimoire: PDF reader failed, falling back to the plain preview —", err);
       }
@@ -157,8 +161,14 @@ async function boot() {
     return;
   }
 
-  content.append(el("div", { class: "loading" }, ["Loading…"]));
-  const rendered = await renderContent(item, vault.config.driveApiKey);
+  const loadingEl = el("div", { class: "loading" }, ["Loading…"]);
+  content.append(loadingEl);
+  // Only the PDF path actually reports progress (a Drive fetch of a large
+  // file is the one part of this that can take a while); every other
+  // branch resolves fast enough that the plain "Loading…" never lingers.
+  const rendered = await renderContent(item, vault.config.driveApiKey, (percent) => {
+    loadingEl.textContent = percent != null ? `Loading… ${percent}%` : "Loading…";
+  });
   content.innerHTML = "";
   content.append(rendered);
 }

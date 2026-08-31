@@ -507,12 +507,68 @@ button.node-name:hover {
   min-height: 0;
 }
 
-.pdf-rail-scroll {
+.pdf-rail-column {
   flex: 0 0 auto;
   width: 128px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   background: var(--ob-bg-paper);
   border-right: 1px solid var(--border);
+  min-height: 0;
+}
+
+.pdf-rail-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.pdf-rail-tab {
+  flex: 1 1 auto;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 7px 4px;
+  font-size: 11px;
+  color: var(--ob-text-secondary);
+}
+
+.pdf-rail-tab:hover {
+  background: var(--hover);
+}
+
+.pdf-rail-tab.active {
+  color: var(--ob-text);
+  border-bottom-color: var(--ob-primary);
+  font-weight: 600;
+}
+
+.pdf-rail-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.pdf-outline-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ob-text-secondary);
+}
+
+.pdf-outline-item:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--ob-text);
+}
+
+.pdf-outline-item:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .pdf-rail {
@@ -605,13 +661,25 @@ button.node-name:hover {
   flex: 1 1 auto;
   overflow: auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   padding: 16px;
   background: #14141a;
 }
 
+.pdf-page-wrapper {
+  margin-bottom: 16px;
+  flex: 0 0 auto;
+}
+
+.pdf-page-wrapper:last-child {
+  margin-bottom: 0;
+}
+
 .pdf-page-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
   background: white;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
   max-width: none;
