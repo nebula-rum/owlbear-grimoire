@@ -503,57 +503,6 @@ button.node-name:hover {
   padding: 6px 8px;
 }
 
-/* ---------- viewer browse drawer ---------- */
-
-.viewer-browse-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 40;
-}
-
-.viewer-browse-drawer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 260px;
-  max-width: 82%;
-  background: var(--ob-bg-paper);
-  border-right: 1px solid var(--border);
-  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
-  z-index: 41;
-  display: flex;
-  flex-direction: column;
-}
-
-.viewer-browse-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  flex: 0 0 auto;
-}
-
-.viewer-browse-header h2 {
-  font-size: 12px;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--ob-text-secondary);
-}
-
-.viewer-browse-tree {
-  flex: 1 1 auto;
-}
-
-.node-name.active {
-  background: var(--ob-primary);
-  color: var(--ob-primary-contrast);
-}
-
 /* ---------- pdf reader ---------- */
 
 .pdf-reader {

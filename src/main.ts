@@ -10,7 +10,7 @@
 import OBR from "@owlbear-rodeo/sdk";
 import { initTheme } from "./theme";
 import { loadVault, onVaultChange, saveVault, VaultSizeError } from "./store";
-import { childrenOf, isEffectivelyHidden, ancestorIds, nextOrder, wouldCreateCycle, descendantIds } from "./tree";
+import { childrenOf, isEffectivelyHidden, nextOrder, wouldCreateCycle, descendantIds } from "./tree";
 import {
   extractDriveFileId,
   fetchDriveThumbnail,
@@ -570,12 +570,8 @@ function renderTreeScreen() {
 // real client doesn't actually honor (see CLAUDE.md).
 
 let viewerItemId: string | null = null;
-let viewerBrowseOpen = false;
-const viewerBrowseExpanded = new Set<string>();
 let viewerHeaderEl: HTMLElement | null = null;
 let viewerContentEl: HTMLElement | null = null;
-let viewerBrowseBackdropEl: HTMLElement | null = null;
-let viewerBrowseDrawerEl: HTMLElement | null = null;
 
 /** The URL to send someone to if they want this open as a real browser tab
  *  instead of embedded here — the original Drive share link for pdf/markdown,
@@ -717,98 +713,13 @@ async function buildViewerNode(
   return el("div", { class: "center-message" }, [el("p", {}, ["Nothing to display for this item."])]);
 }
 
-function renderViewerBrowseNode(item: VaultItem, container: HTMLElement) {
-  const wrapper = el("div", { class: "node" });
-  const isFolder = item.type === "folder";
-  const row = el("div", { class: `node-row${role === "GM" && item.hidden ? " hidden-item" : ""}` });
-
-  row.append(el("span", { class: "node-icon" }, [TYPE_META[item.type].icon]));
-
-  if (isFolder) {
-    const btn = el("button", { class: "node-name", type: "button" }, [item.name]);
-    btn.onclick = () => {
-      if (viewerBrowseExpanded.has(item.id)) viewerBrowseExpanded.delete(item.id);
-      else viewerBrowseExpanded.add(item.id);
-      renderViewerBrowseDrawer();
-    };
-    row.append(btn);
-  } else {
-    const active = item.id === viewerItemId;
-    const btn = el("button", { class: `node-name${active ? " active" : ""}`, type: "button" }, [item.name]);
-    btn.onclick = () => void showViewerItem(item.id);
-    row.append(btn);
-  }
-
-  wrapper.append(row);
-
-  if (isFolder && viewerBrowseExpanded.has(item.id)) {
-    const kids = childrenOf(vault.items, item.id).filter(
-      (child) => role === "GM" || !isEffectivelyHidden(vault.items, child),
-    );
-    const childWrap = el("div", { class: "node-children" });
-    kids.forEach((child) => renderViewerBrowseNode(child, childWrap));
-    wrapper.append(childWrap);
-  }
-
-  container.append(wrapper);
-}
-
-/** Rebuilds the slide-out item switcher from scratch. Safe (and cheap) to
- *  call any time viewer state changes — it's a no-op beyond tearing down the
- *  old DOM when `viewerBrowseOpen` is false. */
-function renderViewerBrowseDrawer() {
-  viewerBrowseBackdropEl?.remove();
-  viewerBrowseDrawerEl?.remove();
-  viewerBrowseBackdropEl = null;
-  viewerBrowseDrawerEl = null;
-  if (!viewerBrowseOpen) return;
-
-  const backdrop = el("div", { class: "viewer-browse-backdrop" });
-  backdrop.onclick = () => {
-    viewerBrowseOpen = false;
-    renderViewerBrowseDrawer();
-  };
-
-  const closeBtn = el("button", { class: "icon-btn", type: "button", title: "Close" }, ["✕"]);
-  closeBtn.onclick = () => {
-    viewerBrowseOpen = false;
-    renderViewerBrowseDrawer();
-  };
-
-  const treeEl = el("div", { class: "viewer-browse-tree tree-scroll" });
-  const roots = childrenOf(vault.items, null).filter(
-    (item) => role === "GM" || !isEffectivelyHidden(vault.items, item),
-  );
-  if (roots.length === 0) {
-    treeEl.append(el("div", { class: "empty-state" }, [el("p", {}, ["Nothing here yet."])]));
-  } else {
-    roots.forEach((item) => renderViewerBrowseNode(item, treeEl));
-  }
-
-  const drawer = el("div", { class: "viewer-browse-drawer" }, [
-    el("div", { class: "viewer-browse-header" }, [el("h2", {}, ["Browse"]), closeBtn]),
-    treeEl,
-  ]);
-
-  app.append(backdrop, drawer);
-  viewerBrowseBackdropEl = backdrop;
-  viewerBrowseDrawerEl = drawer;
-}
-
 function renderViewerHeader(item: VaultItem | undefined) {
   const headerEl = viewerHeaderEl!;
   headerEl.innerHTML = "";
 
-  const browseBtn = el("button", { class: "icon-btn", type: "button", title: "Browse other items" }, ["☰"]);
-  browseBtn.onclick = () => {
-    viewerBrowseOpen = !viewerBrowseOpen;
-    if (viewerBrowseOpen && viewerItemId) {
-      const current = vault.items.find((i) => i.id === viewerItemId);
-      if (current) ancestorIds(vault.items, current).forEach((id) => viewerBrowseExpanded.add(id));
-    }
-    renderViewerBrowseDrawer();
-  };
-  headerEl.append(browseBtn);
+  const backBtn = el("button", { class: "icon-btn", type: "button", title: "Back to the folder tree" }, ["←"]);
+  backBtn.onclick = () => closeViewerScreen();
+  headerEl.append(backBtn);
 
   if (item?.type === "pdf" && item.driveFileId && vault.config.driveApiKey) {
     const thumbImg = el("img", { class: "viewer-header-thumb", alt: "" }) as HTMLImageElement;
@@ -846,8 +757,8 @@ function renderViewerHeader(item: VaultItem | undefined) {
     headerEl.append(openBtn);
   }
 
-  const closeBtn = el("button", { class: "icon-btn", type: "button", title: "Close" }, ["✕"]);
-  closeBtn.onclick = () => closeViewerScreen();
+  const closeBtn = el("button", { class: "icon-btn", type: "button", title: "Close Grimoire" }, ["✕"]);
+  closeBtn.onclick = () => void OBR.action.close();
   headerEl.append(closeBtn);
 }
 
@@ -888,7 +799,6 @@ async function renderViewerContent(item: VaultItem | undefined) {
  *  openViewerScreen() first if it might not be. */
 async function showViewerItem(itemId: string | null) {
   viewerItemId = itemId;
-  viewerBrowseOpen = false;
   if (itemId) {
     try {
       history.replaceState(null, "", `${window.location.pathname}?item=${encodeURIComponent(itemId)}`);
@@ -897,7 +807,6 @@ async function showViewerItem(itemId: string | null) {
       // item) — ignore if the embedding context disallows history writes.
     }
   }
-  renderViewerBrowseDrawer();
   const item = itemId ? vault.items.find((i) => i.id === itemId) : undefined;
   renderViewerHeader(item);
   await renderViewerContent(item);
@@ -927,9 +836,6 @@ function closeViewerScreen() {
   viewerItemId = null;
   viewerHeaderEl = null;
   viewerContentEl = null;
-  viewerBrowseOpen = false;
-  viewerBrowseBackdropEl = null;
-  viewerBrowseDrawerEl = null;
   try {
     history.replaceState(null, "", window.location.pathname);
   } catch {
@@ -947,14 +853,13 @@ let screen: Screen = "tree";
 
 /** The single entry point every state-changing action calls. Routes to
  *  whichever screen is currently active; the viewer branch deliberately
- *  only refreshes the header/browse-drawer chrome (name/thumbnail may have
- *  changed) rather than re-running showViewerItem — that would re-fetch and
+ *  only refreshes the header chrome (name/thumbnail may have changed)
+ *  rather than re-running showViewerItem — that would re-fetch and
  *  re-render the PDF/Markdown (slow, and disruptive mid-read) just because
  *  something unrelated changed elsewhere in the vault. */
 function render() {
   if (screen === "viewer") {
     renderViewerHeader(viewerItemId ? vault.items.find((i) => i.id === viewerItemId) : undefined);
-    renderViewerBrowseDrawer();
     renderToast();
     return;
   }
