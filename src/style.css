@@ -599,20 +599,42 @@ button.node-name:hover {
   min-height: 0;
 }
 
+.pdf-outline-row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.pdf-outline-row:hover {
+  background: var(--hover);
+}
+
+.pdf-outline-toggle {
+  background: none;
+  border: none;
+  width: 16px;
+  height: 26px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ob-text-secondary);
+  font-size: 9px;
+}
+
 .pdf-outline-item {
-  display: block;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   text-align: left;
   background: none;
   border: none;
-  padding: 6px 8px;
+  padding: 6px 8px 6px 2px;
   font-size: 11px;
   line-height: 1.35;
   color: var(--ob-text-secondary);
 }
 
-.pdf-outline-item:hover:not(:disabled) {
-  background: var(--hover);
+.pdf-outline-row:hover .pdf-outline-item:not(:disabled) {
   color: var(--ob-text);
 }
 

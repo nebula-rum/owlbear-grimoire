@@ -427,24 +427,72 @@ export async function renderPdfReader(
   if (outlineEntries.length > 0) {
     const outlinePanel = el("div", { class: "pdf-rail-scroll" });
     outlinePanel.hidden = true;
-    outlineEntries.forEach((entry) => {
-      const btn = el(
-        "button",
-        {
-          class: "pdf-outline-item",
-          type: "button",
-          style: `padding-left: ${8 + entry.depth * 14}px`,
-        } as any,
-        [entry.title],
-      ) as HTMLButtonElement;
-      if (entry.pageNumber != null) {
-        const target = entry.pageNumber;
-        btn.onclick = () => goTo(target);
-      } else {
-        btn.disabled = true;
-      }
-      outlinePanel.append(btn);
-    });
+
+    // Entries with a deeper-depth entry immediately after them are their
+    // parent's "has children" marker — outlineEntries is a DFS pre-order
+    // flattening (see flattenOutline), so a node's children are exactly the
+    // contiguous run of following entries with depth > its own, and that
+    // run always starts right after it.
+    const hasChildren = outlineEntries.map(
+      (entry, i) => (outlineEntries[i + 1]?.depth ?? -1) > entry.depth,
+    );
+    // Collapsed by index into outlineEntries. Starts empty (everything
+    // expanded, matching the old flat list) — folding is opt-in per node,
+    // like the vault folder tree's ▸/▾.
+    const collapsedOutline = new Set<number>();
+
+    function renderOutlinePanel() {
+      outlinePanel.innerHTML = "";
+      // Non-null while we're inside a collapsed node's subtree — every
+      // entry with depth greater than this is skipped, since flattening is
+      // pre-order (see above) so a subtree's entries are always contiguous.
+      let hideBelowDepth: number | null = null;
+
+      outlineEntries.forEach((entry, i) => {
+        if (hideBelowDepth != null) {
+          if (entry.depth > hideBelowDepth) return; // still inside the collapsed subtree
+          hideBelowDepth = null; // back out of it
+        }
+
+        const collapsed = collapsedOutline.has(i);
+        if (hasChildren[i] && collapsed) hideBelowDepth = entry.depth;
+
+        const row = el("div", { class: "pdf-outline-row" });
+        row.style.paddingLeft = `${entry.depth * 14}px`;
+
+        if (hasChildren[i]) {
+          const toggle = el(
+            "button",
+            { class: "pdf-outline-toggle", type: "button", title: collapsed ? "Expand" : "Collapse" },
+            [collapsed ? "▸" : "▾"],
+          ) as HTMLButtonElement;
+          toggle.onclick = () => {
+            if (collapsed) collapsedOutline.delete(i);
+            else collapsedOutline.add(i);
+            renderOutlinePanel();
+          };
+          row.append(toggle);
+        } else {
+          row.append(el("span", { class: "pdf-outline-toggle" }, [""]));
+        }
+
+        const btn = el(
+          "button",
+          { class: "pdf-outline-item", type: "button" },
+          [entry.title],
+        ) as HTMLButtonElement;
+        if (entry.pageNumber != null) {
+          const target = entry.pageNumber;
+          btn.onclick = () => goTo(target);
+        } else {
+          btn.disabled = true;
+        }
+        row.append(btn);
+
+        outlinePanel.append(row);
+      });
+    }
+    renderOutlinePanel();
 
     const pagesTab = el("button", { class: "pdf-rail-tab active", type: "button" }, ["Pages"]);
     const chaptersTab = el("button", { class: "pdf-rail-tab", type: "button" }, ["Chapters"]);
