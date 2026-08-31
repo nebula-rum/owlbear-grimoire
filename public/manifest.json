@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "manifest_version": 1,
   "description": "Organize rules references and lore (PDF & Markdown from Google Drive) into folders and reveal them to players when you're ready.",
-  "author": "nebula-rum",
+  "author": "nebularum",
   "icon": "/owlbear-grimoire/icon.svg",
   "background_url": "/owlbear-grimoire/background.html",
   "action": {
