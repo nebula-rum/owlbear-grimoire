@@ -32,11 +32,27 @@ import { TYPE_META } from "./itemMeta";
 // holds).
 const TREE_WIDTH = 420;
 const TREE_HEIGHT = 640;
-// Sized to show a whole portrait PDF page (US Letter/A4-ish ratio) at a
-// readable scale once the reader's thumbnail rail and toolbar are accounted
-// for.
-const VIEWER_WIDTH = 880;
-const VIEWER_HEIGHT = 1040;
+
+// The viewer is sized to almost fill the screen's height and match an A4
+// portrait page's proportions (210:297mm) in width — plus a fixed allowance
+// for the PDF reader's thumbnail rail (`.pdf-rail-column`'s 128px in
+// style.css), so the *page itself* renders at roughly true A4 shape instead
+// of being squeezed narrower by that sidebar. Computed from window.screen
+// (available regardless of this being an embedded iframe — it reflects the
+// physical display, not the parent document) rather than hardcoded, so it
+// scales across monitors instead of assuming ~1080p. Recomputed on every
+// call rather than cached, so it stays right if the window moves to a
+// different monitor mid-session.
+const A4_PORTRAIT_RATIO = 210 / 297;
+const PDF_RAIL_ALLOWANCE = 128;
+
+function computeViewerSize(): { width: number; height: number } {
+  const availHeight = window.screen.availHeight || window.screen.height || 900;
+  const availWidth = window.screen.availWidth || window.screen.width || 1200;
+  const height = Math.round(Math.min(Math.max(availHeight * 0.92, 700), 1700));
+  const width = Math.round(Math.min(height * A4_PORTRAIT_RATIO + PDF_RAIL_ALLOWANCE, availWidth * 0.6));
+  return { width, height };
+}
 
 // ---------------------------------------------------------------- state --
 
@@ -864,8 +880,9 @@ function openViewerScreen(itemId: string) {
     viewerHeaderEl = el("div", { class: "viewer-header" });
     viewerContentEl = el("div", { class: "viewer-content" });
     app.append(viewerHeaderEl, viewerContentEl);
-    void OBR.action.setWidth(VIEWER_WIDTH);
-    void OBR.action.setHeight(VIEWER_HEIGHT);
+    const { width, height } = computeViewerSize();
+    void OBR.action.setWidth(width);
+    void OBR.action.setHeight(height);
   }
   void showViewerItem(itemId);
 }
