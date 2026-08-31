@@ -10,6 +10,7 @@
   --border: color-mix(in srgb, var(--ob-text) 12%, transparent);
   --hover: color-mix(in srgb, var(--ob-text) 6%, transparent);
   --danger: #e5484d;
+  --success: #46a758;
 }
 
 * {
@@ -338,6 +339,19 @@ button.node-name:hover {
   color: var(--danger);
   font-size: 11px;
   margin-top: 4px;
+}
+
+.field-status {
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.field-status.field-success {
+  color: var(--success);
+}
+
+.field-status.field-error {
+  color: var(--danger);
 }
 
 .toast {
