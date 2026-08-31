@@ -18,7 +18,7 @@ import {
   driveFilePreviewUrl,
   driveFileViewUrl,
 } from "./drive";
-import { fetchRenderedMarkdown, MarkdownFetchError } from "./markdown";
+import { fetchRenderedMarkdown, MarkdownFetchError, MarkdownHeading } from "./markdown";
 import { renderPdfReader } from "./pdfReader";
 import { newId, VaultData, VaultItem, VaultItemType, EMPTY_VAULT } from "./types";
 import { PRESENT_CHANNEL, PresentMessage, broadcastPresent, consumePendingPresentedItem, clearPendingPresentedItem } from "./present";
@@ -35,7 +35,7 @@ const TREE_HEIGHT = 640;
 
 // The viewer is sized to almost fill the screen's height and match an A4
 // portrait page's proportions (210:297mm) in width — plus a fixed allowance
-// for the PDF reader's thumbnail rail (`.pdf-rail-column`'s 128px in
+// for the PDF reader's thumbnail rail (`.rail-column`'s 128px in
 // style.css), so the *page itself* renders at roughly true A4 shape instead
 // of being squeezed narrower by that sidebar. Computed from window.screen
 // (available regardless of this being an embedded iframe — it reflects the
@@ -590,6 +590,65 @@ function externalUrlFor(item: VaultItem): string | null {
   return null;
 }
 
+/** A collapsible chapter/subchapter sidebar for a rendered Markdown
+ *  document's headings — same fold-per-level UX as the PDF reader's chapter
+ *  panel (see pdfReader.ts's renderOutlinePanel, which this mirrors:
+ *  headings is a flat, depth-tagged, source-order list, so a heading's
+ *  "children" are exactly the contiguous run of following entries with
+ *  greater depth). Clicking one scrolls that heading into view inside
+ *  `scrollContainer` instead of navigating to a page. */
+function buildHeadingsRail(headings: MarkdownHeading[], scrollContainer: HTMLElement): HTMLElement {
+  const railScroll = el("div", { class: "rail-scroll" });
+  const hasChildren = headings.map((h, i) => (headings[i + 1]?.depth ?? 0) > h.depth);
+  const collapsed = new Set<number>();
+
+  function renderRail() {
+    railScroll.innerHTML = "";
+    let hideBelowDepth: number | null = null;
+
+    headings.forEach((heading, i) => {
+      if (hideBelowDepth != null) {
+        if (heading.depth > hideBelowDepth) return; // still inside the collapsed subtree
+        hideBelowDepth = null; // back out of it
+      }
+
+      const isCollapsed = collapsed.has(i);
+      if (hasChildren[i] && isCollapsed) hideBelowDepth = heading.depth;
+
+      const row = el("div", { class: "outline-row" });
+      // depth is 1-based (h1 = 1); top-level headings start unindented.
+      row.style.paddingLeft = `${(heading.depth - 1) * 14}px`;
+
+      if (hasChildren[i]) {
+        const toggle = el(
+          "button",
+          { class: "outline-toggle", type: "button", title: isCollapsed ? "Expand" : "Collapse" },
+          [isCollapsed ? "▸" : "▾"],
+        ) as HTMLButtonElement;
+        toggle.onclick = () => {
+          if (isCollapsed) collapsed.delete(i);
+          else collapsed.add(i);
+          renderRail();
+        };
+        row.append(toggle);
+      } else {
+        row.append(el("span", { class: "outline-toggle" }, [""]));
+      }
+
+      const btn = el("button", { class: "outline-item", type: "button" }, [heading.title]) as HTMLButtonElement;
+      btn.onclick = () => {
+        scrollContainer.querySelector(`#${CSS.escape(heading.id)}`)?.scrollIntoView({ block: "start" });
+      };
+      row.append(btn);
+
+      railScroll.append(row);
+    });
+  }
+  renderRail();
+
+  return el("div", { class: "rail-column" }, [railScroll]);
+}
+
 async function buildViewerNode(
   item: VaultItem,
   apiKey: string | undefined,
@@ -627,10 +686,14 @@ async function buildViewerNode(
       ]);
     }
     try {
-      const html = await fetchRenderedMarkdown(item.driveFileId, apiKey);
+      const { html, headings } = await fetchRenderedMarkdown(item.driveFileId, apiKey);
       const pane = el("div", { class: "markdown-pane" });
       pane.innerHTML = html;
-      return pane;
+      if (headings.length === 0) return pane;
+
+      const mdMain = el("div", { class: "md-main" }, [pane]);
+      const rail = buildHeadingsRail(headings, mdMain);
+      return el("div", { class: "md-reader" }, [rail, mdMain]);
     } catch (err) {
       const message = err instanceof MarkdownFetchError ? err.message : "Something went wrong rendering this file.";
       return el("div", { class: "center-message" }, [

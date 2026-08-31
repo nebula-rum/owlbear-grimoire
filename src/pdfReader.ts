@@ -354,7 +354,7 @@ export async function renderPdfReader(
 
   // ---- thumbnail rail (lazy: only rendered once scrolled near) ----
   const rail = el("div", { class: "pdf-rail" });
-  const railScroll = el("div", { class: "pdf-rail-scroll" }, [rail]);
+  const railScroll = el("div", { class: "rail-scroll" }, [rail]);
 
   const thumbButtons: HTMLButtonElement[] = [];
   const thumbCanvases: HTMLCanvasElement[] = [];
@@ -425,7 +425,7 @@ export async function renderPdfReader(
 
   let railColumnChildren: (Node | string)[] = [railScroll];
   if (outlineEntries.length > 0) {
-    const outlinePanel = el("div", { class: "pdf-rail-scroll" });
+    const outlinePanel = el("div", { class: "rail-scroll" });
     outlinePanel.hidden = true;
 
     // Entries with a deeper-depth entry immediately after them are their
@@ -457,13 +457,13 @@ export async function renderPdfReader(
         const collapsed = collapsedOutline.has(i);
         if (hasChildren[i] && collapsed) hideBelowDepth = entry.depth;
 
-        const row = el("div", { class: "pdf-outline-row" });
+        const row = el("div", { class: "outline-row" });
         row.style.paddingLeft = `${entry.depth * 14}px`;
 
         if (hasChildren[i]) {
           const toggle = el(
             "button",
-            { class: "pdf-outline-toggle", type: "button", title: collapsed ? "Expand" : "Collapse" },
+            { class: "outline-toggle", type: "button", title: collapsed ? "Expand" : "Collapse" },
             [collapsed ? "▸" : "▾"],
           ) as HTMLButtonElement;
           toggle.onclick = () => {
@@ -473,12 +473,12 @@ export async function renderPdfReader(
           };
           row.append(toggle);
         } else {
-          row.append(el("span", { class: "pdf-outline-toggle" }, [""]));
+          row.append(el("span", { class: "outline-toggle" }, [""]));
         }
 
         const btn = el(
           "button",
-          { class: "pdf-outline-item", type: "button" },
+          { class: "outline-item", type: "button" },
           [entry.title],
         ) as HTMLButtonElement;
         if (entry.pageNumber != null) {
@@ -512,7 +512,7 @@ export async function renderPdfReader(
     railColumnChildren = [railTabs, railScroll, outlinePanel];
   }
 
-  const railColumn = el("div", { class: "pdf-rail-column" }, railColumnChildren);
+  const railColumn = el("div", { class: "rail-column" }, railColumnChildren);
   const main = el("div", { class: "pdf-main" }, [toolbar, pageArea]);
   const root = el("div", { class: "pdf-reader" }, [railColumn, main]);
 

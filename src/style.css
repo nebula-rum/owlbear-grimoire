@@ -426,6 +426,25 @@ button.node-name:hover {
   display: block;
 }
 
+/* Wraps a headings rail + the markdown-pane when a document has headings to
+   navigate — absolutely fills .viewer-content (which is position: relative
+   for exactly this) the same way .pdf-reader does, so the rail and the
+   content pane each scroll independently instead of .viewer-content's own
+   overflow scrolling them together. Omitted entirely for a headingless
+   document, which just renders .markdown-pane directly as before. */
+.md-reader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-height: 0;
+}
+
+.md-main {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-width: 0;
+}
+
 .markdown-pane {
   max-width: 780px;
   margin: 0 auto;
@@ -544,7 +563,7 @@ button.node-name:hover {
   min-height: 0;
 }
 
-.pdf-rail-column {
+.rail-column {
   flex: 0 0 auto;
   width: 128px;
   display: flex;
@@ -580,23 +599,23 @@ button.node-name:hover {
   font-weight: 600;
 }
 
-.pdf-rail-scroll {
+.rail-scroll {
   flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
 }
 
-.pdf-outline-row {
+.outline-row {
   display: flex;
   align-items: center;
   border-radius: 6px;
 }
 
-.pdf-outline-row:hover {
+.outline-row:hover {
   background: var(--hover);
 }
 
-.pdf-outline-toggle {
+.outline-toggle {
   background: none;
   border: none;
   width: 16px;
@@ -609,7 +628,7 @@ button.node-name:hover {
   font-size: 9px;
 }
 
-.pdf-outline-item {
+.outline-item {
   flex: 1 1 auto;
   min-width: 0;
   text-align: left;
@@ -621,11 +640,11 @@ button.node-name:hover {
   color: var(--ob-text-secondary);
 }
 
-.pdf-outline-row:hover .pdf-outline-item:not(:disabled) {
+.outline-row:hover .outline-item:not(:disabled) {
   color: var(--ob-text);
 }
 
-.pdf-outline-item:disabled {
+.outline-item:disabled {
   opacity: 0.5;
   cursor: default;
 }
