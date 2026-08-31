@@ -426,7 +426,6 @@ export async function renderPdfReader(
   let railColumnChildren: (Node | string)[] = [railScroll];
   if (outlineEntries.length > 0) {
     const outlinePanel = el("div", { class: "rail-scroll" });
-    outlinePanel.hidden = true;
 
     // Entries with a deeper-depth entry immediately after them are their
     // parent's "has children" marker — outlineEntries is a DFS pre-order
@@ -436,10 +435,14 @@ export async function renderPdfReader(
     const hasChildren = outlineEntries.map(
       (entry, i) => (outlineEntries[i + 1]?.depth ?? -1) > entry.depth,
     );
-    // Collapsed by index into outlineEntries. Starts empty (everything
-    // expanded, matching the old flat list) — folding is opt-in per node,
-    // like the vault folder tree's ▸/▾.
-    const collapsedOutline = new Set<number>();
+    // Collapsed by index into outlineEntries. Starts with every node that
+    // has children folded, so a long/deep outline opens showing just its
+    // top-level chapters rather than the whole tree at once — expanding is
+    // opt-in per node from there, like the vault folder tree's ▸/▾ used to
+    // be.
+    const collapsedOutline = new Set<number>(
+      hasChildren.flatMap((has, i) => (has ? [i] : [])),
+    );
 
     function renderOutlinePanel() {
       outlinePanel.innerHTML = "";
@@ -494,8 +497,13 @@ export async function renderPdfReader(
     }
     renderOutlinePanel();
 
-    const pagesTab = el("button", { class: "pdf-rail-tab active", type: "button" }, ["Pages"]);
-    const chaptersTab = el("button", { class: "pdf-rail-tab", type: "button" }, ["Chapters"]);
+    // Chapters is the default view when a PDF actually has an outline —
+    // more useful to land on than a wall of page thumbnails. Pages tab
+    // (and thus the thumbnail rail) only becomes visible if picked.
+    railScroll.hidden = true;
+
+    const pagesTab = el("button", { class: "pdf-rail-tab", type: "button" }, ["Pages"]);
+    const chaptersTab = el("button", { class: "pdf-rail-tab active", type: "button" }, ["Chapters"]);
     pagesTab.onclick = () => {
       pagesTab.classList.add("active");
       chaptersTab.classList.remove("active");
