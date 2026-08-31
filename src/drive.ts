@@ -72,3 +72,43 @@ export async function fetchDriveThumbnail(fileId: string, apiKey: string): Promi
     return null;
   }
 }
+
+export interface ApiKeyCheckResult {
+  ok: boolean;
+  message: string;
+}
+
+/**
+ * Validates a Drive API key end-to-end, without needing any real Drive file
+ * to test against — handy the moment a key is pasted in, before a single
+ * item has been added. It asks the Drive API for a file id that can never
+ * exist. A key that's correctly formed, has the Drive API enabled, and (if
+ * restricted) allows requests from this origin gets all the way past
+ * Google's auth/permission checks to its "no such file" business logic —
+ * i.e. an HTTP 404 — which is exactly the success signal we want. Any
+ * earlier failure (missing/invalid key, API not enabled, blocked referrer)
+ * surfaces as Google's own error message, so the fix is usually obvious.
+ */
+export async function checkDriveApiKey(apiKey: string): Promise<ApiKeyCheckResult> {
+  const trimmed = apiKey.trim();
+  if (!trimmed) return { ok: false, message: "No key entered yet." };
+
+  const params = new URLSearchParams({ key: trimmed, fields: "id" });
+  const url = `https://www.googleapis.com/drive/v3/files/grimoire-key-check-nonexistent-file?${params.toString()}`;
+  try {
+    const response = await fetch(url);
+    if (response.status === 404) {
+      return { ok: true, message: "Key is working — Drive API access confirmed." };
+    }
+    let detail = `Request failed (HTTP ${response.status}).`;
+    try {
+      const body = (await response.json()) as { error?: { message?: string } };
+      if (body?.error?.message) detail = body.error.message;
+    } catch {
+      // Not JSON — keep the plain HTTP-status message above.
+    }
+    return { ok: false, message: detail };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Network request failed." };
+  }
+}
