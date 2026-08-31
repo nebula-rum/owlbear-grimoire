@@ -3,7 +3,7 @@ import OBR from "@owlbear-rodeo/sdk";
 import { initTheme } from "./theme";
 import { loadVault, onVaultChange, saveVault, VaultSizeError } from "./store";
 import { childrenOf, isEffectivelyHidden, nextOrder, wouldCreateCycle, descendantIds } from "./tree";
-import { extractDriveFileId, fetchDriveThumbnail } from "./drive";
+import { extractDriveFileId, fetchDriveThumbnail, checkDriveApiKey } from "./drive";
 import { newId, VaultData, VaultItem, VaultItemType, EMPTY_VAULT } from "./types";
 
 const TYPE_META: Record<VaultItemType, { icon: string; label: string }> = {
@@ -180,7 +180,10 @@ function saveApiKey(key: string) {
   mutate((d) => {
     d.config.driveApiKey = key.trim() || undefined;
   });
-  settingsOpen = false;
+  // Deliberately left open (unlike most edits here) so the GM can hit "Test
+  // key" right after saving without having to reopen Settings — that
+  // extra reopen step is exactly what made a bad key hard to notice before.
+  showToast("API key saved.");
 }
 
 // -------------------------------------------------------------- viewing --
@@ -478,7 +481,27 @@ function render() {
     const input = el("input", { type: "text", value: vault.config.driveApiKey ?? "" }) as HTMLInputElement;
     const saveBtn = el("button", { class: "btn", type: "button" }, ["Save"]);
     saveBtn.onclick = () => saveApiKey(input.value);
-    panel.append(el("div", { class: "panel-row" }, [input, saveBtn]));
+
+    const testBtn = el("button", { class: "btn secondary", type: "button" }, ["Test key"]);
+    const testStatus = el("div", { class: "field-status" });
+    testStatus.style.display = "none";
+    // Tests whatever's currently typed in, not just the saved value — so you
+    // can check a key before committing to it, or right after Save without
+    // needing to reopen this panel.
+    testBtn.onclick = async () => {
+      testBtn.disabled = true;
+      testBtn.textContent = "Testing…";
+      testStatus.className = "field-status";
+      testStatus.style.display = "block";
+      testStatus.textContent = "Checking…";
+      const result = await checkDriveApiKey(input.value);
+      testBtn.disabled = false;
+      testBtn.textContent = "Test key";
+      testStatus.className = result.ok ? "field-status field-success" : "field-status field-error";
+      testStatus.textContent = (result.ok ? "✓ " : "✗ ") + result.message;
+    };
+
+    panel.append(el("div", { class: "panel-row" }, [input, saveBtn, testBtn]), testStatus);
     app.append(panel);
   }
 
