@@ -1,9 +1,9 @@
-// The full-screen OBR.modal content that actually displays a handout:
-// a Drive PDF preview iframe, rendered Markdown, or a plain external link.
-// Also owns a slide-out "Browse" drawer so the GM/player can switch which
-// item is shown without leaving the modal, and (GM-only) a "Present to
-// players" button that force-opens the current item on every connected
-// screen via a broadcast (see viewerModal.ts / background.ts).
+// The OBR.popover content that actually displays a handout: a Drive PDF
+// preview iframe, rendered Markdown, or a plain external link. Also owns a
+// slide-out "Browse" drawer so the GM/player can switch which item is shown
+// without leaving the popover, and (GM-only) a "Present to players" button
+// that force-opens the current item on every connected screen via a
+// broadcast (see viewerPopover.ts / background.ts).
 import OBR from "@owlbear-rodeo/sdk";
 import { initTheme } from "./theme";
 import { loadVault, onVaultChange } from "./store";
@@ -13,7 +13,7 @@ import { renderPdfReader } from "./pdfReader";
 import { childrenOf, isEffectivelyHidden, ancestorIds } from "./tree";
 import { TYPE_META } from "./itemMeta";
 import { VaultData, VaultItem, EMPTY_VAULT } from "./types";
-import { VIEWER_MODAL_ID, PRESENT_CHANNEL, PresentMessage } from "./viewerModal";
+import { VIEWER_POPOVER_ID, PRESENT_CHANNEL, PresentMessage } from "./viewerPopover";
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -277,7 +277,7 @@ function renderHeader(item: VaultItem | undefined) {
   }
 
   const closeBtn = el("button", { class: "icon-btn", type: "button", title: "Close" }, ["✕"]);
-  closeBtn.onclick = () => OBR.modal.close(VIEWER_MODAL_ID);
+  closeBtn.onclick = () => OBR.popover.close(VIEWER_POPOVER_ID);
   headerEl.append(closeBtn);
 }
 
@@ -314,7 +314,7 @@ async function renderBody(item: VaultItem | undefined) {
 
 // ---------------------------------------------------------- switching --
 
-/** Switches the modal to show a different item in place — no OBR.modal
+/** Switches the popover to show a different item in place — no OBR.popover
  *  re-open, no iframe reload — so the GM/player can jump between handouts
  *  without ever closing the viewer. */
 async function showItem(itemId: string | null) {

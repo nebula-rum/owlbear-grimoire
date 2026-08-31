@@ -1,5 +1,5 @@
 // Small shared display metadata for each vault item type — kept separate so
-// both the sidebar tree (main.ts) and the viewer's in-modal browse drawer
+// both the sidebar tree (main.ts) and the viewer's in-popover browse drawer
 // (viewer.ts) render items identically instead of drifting apart.
 import { VaultItemType } from "./types";
 

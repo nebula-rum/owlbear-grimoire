@@ -5,7 +5,7 @@ import { loadVault, onVaultChange, saveVault, VaultSizeError } from "./store";
 import { childrenOf, isEffectivelyHidden, nextOrder, wouldCreateCycle, descendantIds } from "./tree";
 import { extractDriveFileId, fetchDriveThumbnail, checkDriveApiKey } from "./drive";
 import { newId, VaultData, VaultItem, VaultItemType, EMPTY_VAULT } from "./types";
-import { openViewerModal, PRESENT_CHANNEL, PresentMessage } from "./viewerModal";
+import { openViewerPopover, PRESENT_CHANNEL, PresentMessage } from "./viewerPopover";
 import { TYPE_META } from "./itemMeta";
 
 // ---------------------------------------------------------------- state --
@@ -180,7 +180,7 @@ function saveApiKey(key: string) {
 // -------------------------------------------------------------- viewing --
 
 function openViewer(item: VaultItem) {
-  void openViewerModal(item.id);
+  void openViewerPopover(item.id);
 }
 
 /** GM-only "push to table": force this item open in every connected

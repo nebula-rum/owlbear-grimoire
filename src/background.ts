@@ -10,13 +10,13 @@
 // doesn't happen to have it open at that moment — exactly the case a
 // "push this to everyone's screen right now" feature needs to handle.
 import OBR from "@owlbear-rodeo/sdk";
-import { openViewerModal, PRESENT_CHANNEL, PresentMessage } from "./viewerModal";
+import { openViewerPopover, PRESENT_CHANNEL, PresentMessage } from "./viewerPopover";
 
 OBR.onReady(() => {
   OBR.broadcast.onMessage(PRESENT_CHANNEL, (event) => {
     const data = event.data as Partial<PresentMessage> | undefined;
     if (data && typeof data.itemId === "string") {
-      void openViewerModal(data.itemId);
+      void openViewerPopover(data.itemId);
     }
   });
 });
