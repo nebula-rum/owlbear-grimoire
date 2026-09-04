@@ -5,8 +5,9 @@
 // button). Switching screens resizes the popover itself via
 // OBR.action.setWidth/setHeight rather than opening a second modal/popover,
 // because OBR.action is the one thing Owlbear genuinely keeps docked to the
-// toolbar — see CLAUDE.md's "Owlbear SDK constraints" section for why a
-// *second* positioned popover didn't actually stay docked in practice.
+// toolbar — a second popover positioned via anchorPosition/anchorReference
+// didn't actually stay docked in the real Owlbear client, despite matching
+// the SDK's own types/docs exactly.
 import OBR from "@owlbear-rodeo/sdk";
 import { initTheme } from "./theme";
 import { loadVault, onVaultChange, saveVault, VaultSizeError } from "./store";
@@ -567,7 +568,7 @@ function renderTreeScreen() {
 // opened as its own OBR.modal, then OBR.popover) — now rendered in place in
 // the same popover as the tree, so it inherits the action popover's genuine
 // toolbar-docked position instead of relying on a positioning hint Owlbear's
-// real client doesn't actually honor (see CLAUDE.md).
+// real client doesn't actually honor.
 
 let viewerItemId: string | null = null;
 let viewerHeaderEl: HTMLElement | null = null;
