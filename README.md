@@ -105,6 +105,13 @@ the root, and a **⚙** settings button.
 - **Add a folder/PDF/Markdown/link**: click **+** (at the top for root level, or on a folder row to add inside
   it), choose a type, give it a name, and for PDF/Markdown paste the item's Google Drive share link. For a link
   item, paste any URL.
+- **Import a whole Drive folder at once**: if you'd rather prep a room's content as a folder structure in Drive
+  first, open **⚙ Settings** and paste that folder's share link under **Import from a Google Drive folder**. It
+  mirrors the whole thing into a new top-level folder here — subfolders become folders, `.pdf`/`.md` files become
+  PDF/Markdown items, and anything else (images, Google Docs, etc.) becomes a link item so nothing's silently
+  skipped. The folder — and everything inside it — needs to be shared "Anyone with the link," same as adding one
+  file by hand, and this needs the Drive API key below saved first (it's what lists the folder's contents, not
+  just what renders Markdown). Everything comes in hidden, same safe default as adding items one at a time.
 - **Google Drive links**: open the file in Drive, click **Share**, set access to "Anyone with the link" (Viewer is
   enough), then **Copy link** and paste that into Grimoire. Any of Drive's usual link shapes work
   (`.../file/d/<id>/view`, `.../open?id=<id>`, etc.) — Grimoire pulls the file id out automatically.
@@ -168,6 +175,7 @@ src/present.ts              "Present to players" broadcast + cross-frame pending
 src/store.ts                Reads/writes the grimoire to Owlbear room metadata
 src/tree.ts                  Pure helpers for the folder tree (children, visibility, moving)
 src/drive.ts                  Parses Google Drive share links, builds preview/API URLs
+src/driveImport.ts              Mirrors a whole public Drive folder into vault items
 src/markdown.ts                 Fetches + renders Markdown (marked + DOMPurify)
 src/theme.ts                     Mirrors Owlbear's light/dark theme into CSS variables
 src/style.css                     All styling

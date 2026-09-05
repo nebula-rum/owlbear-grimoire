@@ -30,6 +30,25 @@ export function extractDriveFileId(input: string): string | null {
   return null;
 }
 
+/**
+ * Extract a Google Drive **folder** id from a folder share link
+ * (.../drive/folders/<id>...) — distinct from extractDriveFileId's
+ * file-link patterns, since folder links have their own URL shape. Returns
+ * null if `url` doesn't look like a Drive folder link; a bare id passed in
+ * directly is returned as-is, same fallback as extractDriveFileId.
+ */
+export function extractDriveFolderId(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const match = trimmed.match(/\/folders\/([a-zA-Z0-9_-]{10,})/);
+  if (match) return match[1];
+
+  if (/^[a-zA-Z0-9_-]{10,}$/.test(trimmed)) return trimmed;
+
+  return null;
+}
+
 /** Embeddable preview URL — works for PDFs with zero extra setup, no API key. */
 export function driveFilePreviewUrl(fileId: string): string {
   return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;

@@ -20,6 +20,7 @@ import {
   driveFileViewUrl,
 } from "./drive";
 import { fetchRenderedMarkdown, MarkdownFetchError, MarkdownHeading } from "./markdown";
+import { importDriveFolder, DriveImportError } from "./driveImport";
 import { renderPdfReader } from "./pdfReader";
 import { newId, VaultData, VaultItem, VaultItemType, EMPTY_VAULT } from "./types";
 import { PRESENT_CHANNEL, PresentMessage, broadcastPresent, consumePendingPresentedItem, clearPendingPresentedItem } from "./present";
@@ -533,6 +534,66 @@ function renderTreeScreen() {
     };
 
     panel.append(el("div", { class: "panel-row" }, [input, saveBtn, testBtn]), testStatus);
+
+    panel.append(
+      el("h2", {}, ["Import from a Google Drive folder"]),
+      el("p", {}, [
+        "Paste a link to a Drive folder shared \"Anyone with the link\" (same as your files) to mirror its whole structure into a new top-level folder here — subfolders become folders, .pdf/.md files become PDF/Markdown items, and anything else becomes a link so nothing's silently skipped. Needs the API key above, saved first.",
+      ]),
+    );
+    const importInput = el("input", {
+      type: "text",
+      placeholder: "https://drive.google.com/drive/folders/...",
+    }) as HTMLInputElement;
+    const importBtn = el("button", { class: "btn", type: "button" }, ["Import"]);
+    const importStatus = el("div", { class: "field-status" });
+    importStatus.style.display = "none";
+
+    importBtn.onclick = async () => {
+      const link = importInput.value.trim();
+      if (!link) return;
+      const apiKey = vault.config.driveApiKey;
+      if (!apiKey) {
+        importStatus.className = "field-status field-error";
+        importStatus.style.display = "block";
+        importStatus.textContent = "Save a Drive API key above first — importing needs it to list folder contents.";
+        return;
+      }
+
+      importBtn.disabled = true;
+      importBtn.textContent = "Importing…";
+      importStatus.className = "field-status";
+      importStatus.style.display = "block";
+      importStatus.textContent = "Reading the folder structure — this can take a moment for a big tree…";
+
+      let result!: Awaited<ReturnType<typeof importDriveFolder>>;
+      try {
+        result = await importDriveFolder(link, apiKey, nextOrder(vault.items, null));
+      } catch (err) {
+        importBtn.disabled = false;
+        importBtn.textContent = "Import";
+        importStatus.className = "field-status field-error";
+        importStatus.textContent =
+          err instanceof DriveImportError ? err.message : "Something went wrong importing that folder.";
+        return;
+      }
+
+      // Success from here on: mutate() re-renders the whole tree screen
+      // (see persist()), which tears down this panel — including
+      // importBtn/importStatus — so the result summary goes through the
+      // toast instead of touching those (about-to-be-detached) elements.
+      mutate((d) => {
+        d.items.push(...result.items);
+      });
+      showToast(
+        `Imported "${result.rootName}" — ${result.stats.folders} folder(s), ${result.stats.pdfs} PDF(s), ` +
+          `${result.stats.markdown} Markdown file(s)` +
+          (result.stats.links > 0 ? `, ${result.stats.links} other file(s) added as links` : "") +
+          `. Everything's hidden by default — reveal what players should see.`,
+      );
+    };
+
+    panel.append(el("div", { class: "panel-row" }, [importInput, importBtn]), importStatus);
     app.append(panel);
   }
 
