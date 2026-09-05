@@ -367,7 +367,8 @@ button.node-name:hover {
   margin: 4px 0 4px 18px;
 }
 
-.add-form input {
+.add-form input,
+.add-form select {
   width: 100%;
   background: var(--ob-bg);
   border: 1px solid var(--border);
