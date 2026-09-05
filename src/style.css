@@ -275,6 +275,14 @@ button.node-name:hover {
   border-bottom: 1px solid var(--border);
   padding: 10px 12px;
   background: var(--ob-bg-paper);
+  /* Two sections (API key + Drive folder import) can outgrow the popover's
+     fixed height — #app clips overflow rather than growing, so without its
+     own scroll the panel's later content (originally the import section)
+     was just cut off with no way to reach it. Capped rather than left to
+     flex-shrink math against .tree-scroll below, so it reliably keeps most
+     of the popover instead of both fighting over unclear priority. */
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .panel h2 {
